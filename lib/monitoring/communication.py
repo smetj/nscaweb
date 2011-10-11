@@ -161,6 +161,9 @@ class OutputQueue(threading.Thread):
 		self.avg_data_size=0
 		self.queue_size=0
 		self.daemon=True
+		self.submitlock=False
+		self.submittimer=1
+		self.submitmaxtimer=3600
 		self.start()
 	def run(self):
 		self.logging.put(['Normal','Delivery queue %s of type %s started with destination %s.'%(self.name,self.type,self.locations)])
@@ -168,7 +171,7 @@ class OutputQueue(threading.Thread):
 			bulk = []
 			while not self.queue.empty() and len(bulk) <= self.chunks:
 				bulk.append(self.queue.get())
-			if len(bulk) > 0:
+			if len(bulk) > 0 and self.submitlock != True:
 				while self.__submit(	type=self.type,
 							locations=self.locations,
 							data=bulk,
@@ -176,7 +179,14 @@ class OutputQueue(threading.Thread):
 							queue_size=self.queue.qsize(),
 							queue_bytes=self.get_size()
 							) != True:
-					time.sleep(1)
+					self.logging.put(['Warning','Setting submitlock and wait for %s seconds.'%(self.submittimer)])
+					self.submitlock=True
+					time.sleep(self.submittimer)
+					#increment sleeper with random timer
+					if  self.submittimer < self.submitmaxtimer:
+						self.submittimer = random.randint(self.submittimer, self.submittimer*2)
+			self.submitlock=False
+			self.submittimer=1
 			time.sleep(0.5)
 	def __submit(self,type=None,locations=None,data=None,size=None,queue_size=None,queue_bytes=None):
 		location = self.loadbalance.choose(locations)
