@@ -33,7 +33,7 @@ from configobj import ConfigObj
 from optparse import OptionParser
 from time import gmtime
 
-version="0.1.17"
+version="0.1.18"
 projecturl="http://www.smetj.net/wiki/nscaweb"
 
 class WebServer(threading.Thread):
