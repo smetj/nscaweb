@@ -93,11 +93,11 @@ class SubmitListener(threading.Thread):
 		while self.loop.block() == True:
 			while not self.input_queue.empty():
 				package=self.input_queue.get()
-				if package['data'] == None or package['data'] == '':
+				if package['external_command'] == None or package['external_command'] == '':
 					self.logging.put(["Error","SubmitListener: Request %s produced no output.  It's purged."%(package.get('requestUUID','?'))])
 				else:
 					self.__submit(package)
-			time.sleep(0.5)
+			time.sleep(0.1)
 		self.logging.put(["Normal","SubmitListener thread stopped."])
 	def dump(self,package):
 		'''Using dump, the average package size is calculated prior to submitting it to the Queue.  This is the preferred way for writing data ino SubmitListener.'''
@@ -116,13 +116,13 @@ class SubmitListener(threading.Thread):
 		if self.quota > 0:							
 			if self.output_queues[queue_name].avg_data_size * self.output_queues[queue_name].queue.qsize() < self.quota:
 				#Keep track of the average data size
-				self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['data'])))/2
-				self.output_queues[queue_name].queue.put(package['data'])
+				self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['external_command'])))/2
+				self.output_queues[queue_name].queue.put(package['external_command'])
 			else:
 				raise Exception('queue oversized')
 		else:
-			self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['data'])))/2
-			self.output_queues[queue_name].queue.put(package['data'])
+			self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['external_command'])))/2
+			self.output_queues[queue_name].queue.put(package['external_command'])
 			
 		
 	def __submit(self,package):
@@ -138,8 +138,8 @@ class SubmitListener(threading.Thread):
 									logging=self.logging,
 									blockcallback=self.loop)
 		#Keep track of the average data size
-		self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['data'])))/2
-		self.output_queues[queue_name].queue.put(package['data'])
+		self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['external_command'])))/2
+		self.output_queues[queue_name].queue.put(package['external_command'])
 	def __queue_name(self,destination):
 		return md5(str(destination)).hexdigest()
 class OutputQueue(threading.Thread):
@@ -353,7 +353,10 @@ class DeliverNrdp(threading.Thread):
 			nrdp_data = urlencode({'token':self.token,'XMLDATA':'\n'.join(self.data),'cmd':'submitcheck','btnSubmit':'Submit Check Data'})
 			conn = self.opener.open(self.location,nrdp_data)
 			try:
-				root = ElementTree.XML(conn.read())
+				content = conn.read()
+				conn.close()
+				root = ElementTree.XML(content)
+				
 			except:
 				self.logging.put(['Error','Error submitting data to NRDP %s. Reason: NRDP answer was non xml.'%(self.location)])
 				self.status=False
