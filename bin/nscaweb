@@ -33,7 +33,11 @@ from configobj import ConfigObj
 from optparse import OptionParser
 from time import gmtime
 
+<<<<<<< HEAD
+version="0.1.19"
+=======
 version="0.1.18"
+>>>>>>> 244e0b2c62aebbca8e522b18d15463a1cc90992e
 projecturl="http://www.smetj.net/wiki/nscaweb"
 
 class WebServer(threading.Thread):
@@ -406,7 +410,7 @@ if __name__ == '__main__':
 			sys.exit()
 	except Exception as err:
 		sys.stderr.write('A fatal error has occurred.\n')
-		sys.stderr.write('Please file a bug report to https://bugs.launchpad.net/nscaweb including:\n')
+		sys.stderr.write('Please file a bug report to https://github.com/smetj/nscaweb/issues including:\n')
 		sys.stderr.write('\t - NSCAweb version.\n')
 		sys.stderr.write('\t - A copy of your config file.\n')
 		sys.stderr.write('\t - Your OS and version.\n')
