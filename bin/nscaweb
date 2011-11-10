@@ -33,11 +33,7 @@ from configobj import ConfigObj
 from optparse import OptionParser
 from time import gmtime
 
-<<<<<<< HEAD
 version="0.1.19"
-=======
-version="0.1.18"
->>>>>>> 244e0b2c62aebbca8e522b18d15463a1cc90992e
 projecturl="http://www.smetj.net/wiki/nscaweb"
 
 class WebServer(threading.Thread):
@@ -155,7 +151,7 @@ class HtmlContent:
 			'password' : queueDefinitions[name].get('password',None),
 			'token' : queueDefinitions[name].get('token',None)
 			},
-			'data' : line
+			'external_command' : line
 			}
 		return package
 class Condition():
