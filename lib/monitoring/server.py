@@ -52,39 +52,12 @@ class ThreadControl():
 					return False
 		self.last_ignition_key=False
 		time.sleep(1)
-class LogGenerator(threading.Thread):
-	def __init__(self,type="file",destination=None,daemonize=False,blockcallback=None):
-		threading.Thread.__init__(self)
-		self.queue=Queue.Queue(0)
-		self.type=type
-		self.destination=destination
-		self.loop=blockcallback
-		self.daemonize=daemonize
-		self.name='last'
-		if type ==  'file':
-			self.log = open (self.destination,'a')
-		self.daemon=True
-		self.start()
-	def run(self):
-		self.queue.put(["Normal","The LogGenerator thread started."])
-		while self.loop.last_block() == True:
-			while not self.queue.empty():
-				self.__write(message=self.queue.get())
-				self.log.flush()
-			time.sleep(0.1)
-		self.queue.put(["Normal","The LogGenerator thread stopped."])
-		self.log.close()
-	def __write(self,message=None):
-		'''Do not use this function directly.'''
-		self.log.write ("%s - %s: %s\n"%(time.strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime()),message[0],message[1]))
-		if self.daemonize==False:
-			print ("%s - %s: %s"%(time.strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime()),message[0],message[1]))
 class ConfigFileMonitor(threading.Thread):
 	'''Monitors if the configfile has changed and if so, reads it.'''	
-	def __init__(self,file,logging,blockcallback):
+	def __init__(self,file,logger,blockcallback):
 		threading.Thread.__init__(self)
 		self.config_file=file
-		self.logging=logging
+		self.logger=logger
 		self.loop=blockcallback
 
 		try:
@@ -99,17 +72,17 @@ class ConfigFileMonitor(threading.Thread):
 		self.daemon=True
 		self.start()
 	def run(self):
-		self.logging.put(["Normal","ConfigFileMonitor thread started."])
+		self.logger.info("ConfigFileMonitor thread started.")
 		while self.loop.block()==True:
 			self.current_stats	=os.stat(self.config_file)
 			if (self.current_stats.st_ctime != self.file_stats.st_ctime):
 				try:
 					self.file_stats=self.current_stats
-					self.logging.put(["Normal","The config file has changed."])
+					self.logger.info("The config file has changed.")
 					self.config=ConfigObj(self.config_file) 	
-					self.logging.put(["Normal","The config file is reloaded."])
+					self.logger.info("The config file is reloaded.")
 				except:
-					self.logging.put(["Critical","The config file has not been loaded as it contains errors."])
+					self.logger.error("The config file has not been loaded as it contains errors.")
 					previous_value=current_value
 			time.sleep(1)
-		self.logging.put(["Normal","ConfigFileMonitor thread stopped."])
+		self.logger.info("ConfigFileMonitor thread stopped.")

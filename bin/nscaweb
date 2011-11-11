@@ -29,6 +29,8 @@ import Queue
 import threading
 import daemon
 import select
+import logging
+from cherrypy import log
 from configobj import ConfigObj
 from optparse import OptionParser
 from time import gmtime
@@ -37,24 +39,21 @@ version="0.1.19"
 projecturl="http://www.smetj.net/wiki/nscaweb"
 
 class WebServer(threading.Thread):
-	def __init__(self,host,port,access_file,error_file,pid,ssl="off",ssl_certificate=None,ssl_private_key=None,htmlContent=None,logging=None,blockcallback=None):
+	def __init__(self,host,port,pid,ssl="off",ssl_certificate=None,ssl_private_key=None,htmlContent=None,enable_logging="1",blockcallback=None):
 		threading.Thread.__init__(self)
 		self.host=host
 		self.port=port
-		self.access_file=access_file
-		self.error_file=error_file
 		self.ssl=ssl
 		self.ssl_certificate=ssl_certificate
 		self.ssl_private_key=ssl_private_key
 		self.htmlContent=htmlContent
-		self.logging=logging
+		self.enable_logging=enable_logging
 		self.loop=blockcallback
 		self.daemon=True
 		self.start()		
 	def run(self):
-		self.logging.put(["Normal","The WebServer thread started."])
+		logger.info("WebServer thread started on %s:%s"%(self.host,self.port))
 		config={'global': {'server.socket_host': self.host}}
-	
 		cherrypy.config.update(	
 								{ 
 								'global': 
@@ -63,8 +62,9 @@ class WebServer(threading.Thread):
 									'server.socket_port': int(self.port),
 									'server.socket_host': self.host,
 									'tools.sessions.on': False,
-									'log.access_file': self.access_file,
-									'log.error_file': self.error_file
+#									'log.access_file': None,
+#									'log.error_file': None,
+									'log.screen': False
 									}
 								}
 								)
@@ -78,20 +78,24 @@ class WebServer(threading.Thread):
 									}
 								  )	
 		
-		cherrypy.tree.mount(self.htmlContent,'/',config=config)
-		cherrypy.config.update({'log.screen': False})
+		cp_app = cherrypy.tree.mount(self.htmlContent,'/',config=config)
+		
+		if self.enable_logging == '1':
+			cp_app.log.access_log_format = '%(h)s %(l)s %(u)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
+			cp_app.log.access_log = logger
+			#log.error_log = logger
+			#help(log.error_log)
 		cherrypy.engine.start()
 		while self.loop.block() == True:
 			time.sleep(0.1)
 		cherrypy.engine.exit()
-		self.logging.put(["Normal","The WebServer thread stopped."])
-class HtmlContent:
+		logger.info("WebServer thread stopped.")
+class HtmlContent():
 	'''Class which provides form to accept incoming NSCAweb data.'''
-	def __init__(self,queueDefinitions,submitListener,authentication,logging):
+	def __init__(self,queueDefinitions,submitListener,authentication):
 		self.queueDefinitions=queueDefinitions
 		self.submitListener=submitListener
 		self.authentication=authentication
-		self.logging=logging
 	def index(self,*args,**form):
 		pass
 	index.exposed = False
@@ -111,9 +115,9 @@ class HtmlContent:
 									try:
 										self.submitListener.dump(package)
 									except Exception:
-										self.logging.put(["Warning","Queue size limit reached. Data purged."])
+										logger.warn("Queue size limit reached. Data purged.")
 										continue
-						self.logging.put(["Normal","%s items dumped into the broadcast queue for user %s from IP %s."%(counter,form['username'],cherrypy.request.remote.ip)])
+						logger.info("%s items dumped into the broadcast queue for user %s from IP %s."%(counter,form['username'],cherrypy.request.remote.ip))
 					elif len(args)==1:
 						if self.queueDefinitions.has_key(args[0]) and self.queueDefinitions[args[0]]['enable'] == "1":
 							counter=0
@@ -123,22 +127,22 @@ class HtmlContent:
 								try:
 									self.submitListener.dump(package)
 								except Exception:
-									self.logging.put(["Warning","Queue %s size limit reached. Data discarted."%(args[0])])
+									logger.warn("Queue %s size limit reached. Data discarted."%(args[0]))
 									raise cherrypy.HTTPError("500 Internal Server Error", "Queue %s is full. Data discarted."%(args[0]))
 									
-							self.logging.put(["Normal","%s items dumped into queue %s for user %s from IP %s."%(counter,args[0],form['username'],cherrypy.request.remote.ip)])
+							logger.info("%s items dumped into queue %s for user %s from IP %s."%(counter,args[0],form['username'],cherrypy.request.remote.ip))
 						else:
-							self.logging.put(["Warning","Queue %s does not exist or is disabled. Data is purged for user %s from IP %s."%(args[0],form['username'],cherrypy.request.remote.ip)])
+							logger.warn("Queue %s does not exist or is disabled. Data is purged for user %s from IP %s."%(args[0],form['username'],cherrypy.request.remote.ip))
 					else:
-						self.logging.put(["Warning","Malformed url for user %s from IP %s"%(form['username'],cherrypy.request.remote.ip)])
+						logger.warn("Malformed url for user %s from IP %s"%(form['username'],cherrypy.request.remote.ip))
 				else:
-					self.logging.put(["Warning","Access denied for user %s from IP %s."%(form['username'],cherrypy.request.remote.ip)])
+					logger.warn("Access denied for user %s from IP %s."%(form['username'],cherrypy.request.remote.ip))
 			else:
-				self.logging.put(["Warning","Incomplete data submitted from IP %s."%(cherrypy.request.remote.ip)])
+				logger.warn("Incomplete data submitted from IP %s."%(cherrypy.request.remote.ip))
 		except cherrypy.HTTPError as err:
 			raise cherrypy.HTTPError("500 Internal Server Error", str(err[1]))
 		except Exception as error:
-			self.logging.put(["Warning","Malformed data submitted from IP %s. Maybe something wrong with the destination configuration in the config file."%(cherrypy.request.remote.ip)])
+			logger.warn("Malformed data submitted from IP %s. Maybe something wrong with the destination configuration in the config file."%(cherrypy.request.remote.ip))
 	queue.exposed = True		
 	def default(self, *args, **kwargs):
 		pass
@@ -154,17 +158,37 @@ class HtmlContent:
 			'external_command' : line
 			}
 		return package
-class Condition():
-	def __init__(self):
-		pass
+class Logger():
+	'''Creates a logger class.'''
+	def __init__(self,logfile='', scrlog=True, syslog='1', loglevel=logging.INFO):
+		self.logfile=logfile
+		self.scrlog=scrlog
+		self.syslog=syslog
+		self.loglevel=loglevel
+		self.format=logging.Formatter(fmt='%(asctime)s %(levelname)s: %(message)s',datefmt=None)
+		self.syslog_format=logging.Formatter(fmt='NSCAweb: %(message)s',datefmt=None)
+		self.log = logging.getLogger(__name__)
+		self.log.setLevel(self.loglevel)
+		if logfile != '':
+			self.file_handler = logging.FileHandler( logfile )
+			self.file_handler.setFormatter(self.format)
+			self.log.addHandler(self.file_handler)
+		if scrlog == True:
+			self.scr_handler = logging.StreamHandler()
+			self.scr_handler.setFormatter(self.format)
+			self.log.addHandler(self.scr_handler)
+		if syslog == '1':
+			from logging.handlers import SysLogHandler
+			self.sys_handler = SysLogHandler(address='/dev/log')
+			self.sys_handler.setFormatter(self.syslog_format)
+			self.log.addHandler(self.sys_handler)
 class NamedPipe(threading.Thread):
-	def __init__(self,directory,name,submitListener,queueDefinitions=None,logging=None,blockcallback=None):
+	def __init__(self,directory,name,submitListener,queueDefinitions=None,blockcallback=None):
 		threading.Thread.__init__(self)
 		self.directory=directory
 		self.name=name
 		self.submitListener=submitListener
 		self.queueDefinitions=queueDefinitions
-		self.logging=logging
 		self.loop=blockcallback
 		self.absolutePath=self.directory+'/'+self.name
 		self.daemon=True
@@ -177,10 +201,10 @@ class NamedPipe(threading.Thread):
 		try:
 			os.mkfifo ( self.absolutePath )
 		except Exception as err:
-			self.logging.put(['Error','There was an error creating the named pipe %s. Reason: %s'%(self.absolutePath,err)])
+			logger.critical('There was an error creating the named pipe %s. Reason: %s'%(self.absolutePath,err))
 			return
 		else:
-			self.logging.put(['Normal','Named pipe listener sucessfully created with name %s'%(self.name,)])		
+			logger.info('Named pipe listener created with name %s'%(self.name))
 		try:
 			fifo = open(self.absolutePath,'r')
 			while self.loop.block() == True:
@@ -197,7 +221,7 @@ class NamedPipe(threading.Thread):
 				else:
 					time.sleep(0.1)
 		except Exception as err:
-			self.logging.put(['Error','There was an error reading from the named pipe %s. Reason: %s'%(self.absolutePath,err)])
+			logger.critical('There was an error reading from the named pipe %s. Reason: %s'%(self.absolutePath,err))
 			os.unlink(self.absolutePath)
 			return
 		try:
@@ -205,7 +229,7 @@ class NamedPipe(threading.Thread):
 			os.unlink ( self.absolutePath )
 		except:
 			pass
-		self.logging.put(['Normal','Named pipe listener with name %s has exit.'%(self.name,)])
+		logger.info('Named pipe listener with name %s has exit.'%(self.name))
 		return
 	def stop(self):
 		try:
@@ -238,58 +262,60 @@ class Server():
 		if (os.path.exists(self.config['application']['pidfile'])):
 			sys.stderr.write('There is already a version of nscaweb running, if not delete the pidfile located at: %s\n'%(self.config['application']['pidfile']))
 			sys.exit(1)
-	def start(self):
+	def start(self,debug=False):
+		#Set logging environment
+		global logger
+		logger_object = Logger(	logfile=self.config['logging'].get('logfile',''),
+					scrlog=debug,
+					syslog=self.config['logging'].get('enable_syslog',"0")
+					)
+		logger = logger_object.log
+		logger.info('started')
+		
 		#Extend the search path with library directory.
 		sys.path.append(self.config['application']['libs'])
-		
+		from monitoring.server import ThreadControl
+		from monitoring.server import ConfigFileMonitor
+		from monitoring.authentication import Authenticate
+		from monitoring.communication import SubmitListener
+				
 		#Create pid
 		pidfile=open(self.config["application"]["pidfile"],'w')
 		pidfile.write(str(os.getpid()))
 		pidfile.close()
 			
 		#Create home for threads
-		from monitoring.server import ThreadControl
 		server=ThreadControl()
 
-		#Start a LogGenerator thread
-		from monitoring.server import LogGenerator
-		server.threads['loggenerator'] = LogGenerator(destination=self.config['application'].get('serverlogfile','nscaweb.log'),blockcallback=server)
-	
 		#Start a ConfigFileMonitor thread
-		from monitoring.server import ConfigFileMonitor
 		server.threads['configfilemonitor']	= ConfigFileMonitor	(file=self.configfile,
-										logging=server.threads['loggenerator'].queue,
+										logger=logger,
 										blockcallback=server)
 	
 		#Create Authentication object
-		from monitoring.authentication import Authenticate
 		auth = Authenticate	(	auth_type='default',
 						database=server.threads['configfilemonitor'].file['authentication'],
-						logging=server.threads['loggenerator'].queue)
+						logger=logger)
 
 		#Create SubmitListener object
-		from monitoring.communication import SubmitListener
 		server.threads['submitListener'] = SubmitListener(	quota=int(server.threads['configfilemonitor'].file['application'].get('queue_quota','0')),
-									logging=server.threads['loggenerator'].queue,
+									logger=logger,
 									blockcallback=server)
 
 		#Create an HtmlContent object
 		htmlContent = HtmlContent (	queueDefinitions=server.threads['configfilemonitor'].file['destinations'],
-									submitListener=server.threads['submitListener'],
-									authentication = auth,
-									logging = server.threads['loggenerator'].queue)
+						submitListener=server.threads['submitListener'],
+						authentication = auth)
 		
 		#Start the WebServer thread								
 		server.threads['webserver'] = WebServer	(host=server.threads['configfilemonitor'].file['application']['host'],
 							port=server.threads['configfilemonitor'].file['application']['port'],
-							access_file=server.threads['configfilemonitor'].file['application']['accesslogfile'],
-							error_file=server.threads['configfilemonitor'].file['application']['errorlogfile'],
 							pid=server.threads['configfilemonitor'].file['application']['pidfile'],
 							ssl=server.threads['configfilemonitor'].file['application']['sslengine'],
 							ssl_certificate=server.threads['configfilemonitor'].file['application']['sslcertificate'],
 							ssl_private_key=server.threads['configfilemonitor'].file['application']['sslprivatekey'],
 							htmlContent=htmlContent,
-							logging=server.threads['loggenerator'].queue,
+							enable_logging=self.config['logging'].get('enable_http_logging',"0"),
 							blockcallback=server)
 
 		#Start NamedPipe threads
@@ -300,14 +326,12 @@ class Server():
 																			name=destination,
 																			submitListener=server.threads['submitListener'],
 																			queueDefinitions=server.threads['configfilemonitor'].file['destinations'],
-																			logging=server.threads['loggenerator'].queue,
 																			blockcallback=server)
 
 			server.threads['namedPipe'+destination]	 = NamedPipe( 	directory=server.threads['configfilemonitor'].file['pipes']['directory'],
 																	name='broadcast',
 																	submitListener=server.threads['submitListener'],
 																	queueDefinitions=server.threads['configfilemonitor'].file['destinations'],
-																	logging=server.threads['loggenerator'].queue,
 																	blockcallback=server)
 		#Block here
 		try:
@@ -319,7 +343,7 @@ class Server():
 				#write bogus data into pipes
 				while server.stop_all([server.threads,server.queues]) == False:
 					time.sleep(1)
-					server.threads['loggenerator'].queue.put(['Normal','Waiting for all queues to end.'])
+					logger.info('Waiting for all queues to end.')
 			except KeyboardInterrupt:
 				os.remove(server.threads['configfilemonitor'].file['application']['pidfile'])
 				exit
@@ -391,7 +415,7 @@ if __name__ == '__main__':
 		elif commandline_actions[0] == 'debug':
 			print ("Starting NSCAweb in foreground.")
 			server.check_running()
-			server.start()
+			server.start(debug=True)
 		elif commandline_actions[0] == 'stop':
 			print ("Stopping NSCAweb gracefully.  Tail log for progress.")
 			server.stop()

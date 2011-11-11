@@ -32,7 +32,7 @@ from xml.etree import ElementTree
 from hashlib import md5
 import sys
 
-class LoadBalance:
+class LoadBalance():
 	'''Accepts a list of destinations (ip/hostnames) and chooses based upon self.style an ip address.
 	There is no sanitiy checking done on the input.  You could provide a list of dog names if you want.
 	The style of selection is defined at init.'''
@@ -52,7 +52,7 @@ class LoadBalance:
 			return destinations[self.previous_destination]
 		elif self.style=='first':
 			return destinations[0]
-class Lookup:
+class Lookup():
 	'''Accepts a string, checks if it's a valid ip address, does a reverse lookup and returns the hostname.  If this fails, the original input is returned.'''
 	def __init__(self):
 		pass
@@ -76,17 +76,17 @@ class SubmitListener(threading.Thread):
 	"data":"what to write to command pipe"
       }'''
 	
-	def __init__(self,timeout=60,retries=5,chunks=1000,quota=0,logging=None,blockcallback=None):
+	def __init__(self,timeout=60,retries=5,chunks=1000,quota=0,logger=None,blockcallback=None):
 		threading.Thread.__init__(self)
 		self.timeout=timeout
 		self.retries=retries
 		self.chunks=chunks
 		self.quota=quota
-		self.logging=logging
+		self.logger=logger
 		self.loop=blockcallback
 		self.input_queue=Queue.Queue(0)
 		self.output_queues={}
-		self.logging.put(["Normal","SubmitListener thread started."])
+		self.logger.info("SubmitListener thread started.")
 		self.daemon=True
 		self.start()
 	def run(self):
@@ -94,11 +94,11 @@ class SubmitListener(threading.Thread):
 			while not self.input_queue.empty():
 				package=self.input_queue.get()
 				if package['external_command'] == None or package['external_command'] == '':
-					self.logging.put(["Error","SubmitListener: Request %s produced no output.  It's purged."%(package.get('requestUUID','?'))])
+					self.logger.error("Request %s produced no output.  It's purged."%(package.get('requestUUID','?')))
 				else:
 					self.__submit(package)
 			time.sleep(0.1)
-		self.logging.put(["Normal","SubmitListener thread stopped."])
+		self.logger.info("SubmitListener thread stopped.")
 	def dump(self,package):
 		'''Using dump, the average package size is calculated prior to submitting it to the Queue.  This is the preferred way for writing data ino SubmitListener.'''
 		queue_name = self.__queue_name(package['destination'])
@@ -110,7 +110,7 @@ class SubmitListener(threading.Thread):
 									timeout=self.timeout,
 									retries=self.retries,
 									chunks=self.chunks,
-									logging=self.logging,
+									logger=self.logger,
 									blockcallback=self.loop)
 		
 		if self.quota > 0:							
@@ -135,7 +135,7 @@ class SubmitListener(threading.Thread):
 									timeout=self.timeout,
 									retries=self.retries,
 									chunks=self.chunks,
-									logging=self.logging,
+									logger=self.logger,
 									blockcallback=self.loop)
 		#Keep track of the average data size
 		self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['external_command'])))/2
@@ -143,7 +143,7 @@ class SubmitListener(threading.Thread):
 	def __queue_name(self,destination):
 		return md5(str(destination)).hexdigest()
 class OutputQueue(threading.Thread):
-	def __init__(self,name=None,destination=None,timeout=None,retries=None,chunks=None,logging=None,blockcallback=None):
+	def __init__(self,name=None,destination=None,timeout=None,retries=None,chunks=None,logger=None,blockcallback=None):
 		threading.Thread.__init__(self)
 		self.name=name
 		self.type=destination['type']
@@ -154,7 +154,7 @@ class OutputQueue(threading.Thread):
 		self.timeout=timeout
 		self.retries=retries
 		self.chunks=chunks
-		self.logging=logging
+		self.logger=logger
 		self.loop=blockcallback
 		self.queue=Queue.Queue(0)
 		self.loadbalance=LoadBalance()
@@ -166,7 +166,7 @@ class OutputQueue(threading.Thread):
 		self.submitmaxtimer=3600
 		self.start()
 	def run(self):
-		self.logging.put(['Normal','Delivery queue %s of type %s started with destination %s.'%(self.name,self.type,self.locations)])
+		self.logger.info('Delivery queue %s of type %s started with destination %s.'%(self.name,self.type,self.locations))
 		while self.loop.block() == True:
 			bulk = []
 			while not self.queue.empty() and len(bulk) <= self.chunks:
@@ -179,7 +179,7 @@ class OutputQueue(threading.Thread):
 							queue_size=self.queue.qsize(),
 							queue_bytes=self.get_size()
 							) != True:
-					self.logging.put(['Warning','Setting submitlock and wait for %s seconds.'%(self.submittimer)])
+					self.logger.info('Setting submitlock and wait for %s seconds.'%(self.submittimer))
 					self.submitlock=True
 					time.sleep(self.submittimer)
 					#increment sleeper with random timer
@@ -196,14 +196,14 @@ class OutputQueue(threading.Thread):
 							size=size,
 							queue_size=queue_size,
 							queue_bytes=queue_bytes,
-							logging=self.logging)
+							logger=self.logger)
 		elif type == 'named pipe' or type == 'local' or type == 'pipe':
 			connector = DeliverNamedPipe(	location=location,
 							data=data,
 							size=size,
 							queue_size=queue_size,
 							queue_bytes=queue_bytes,
-							logging=self.logging)
+							logger=self.logger)
 		elif type == 'nscaweb':
 			connector = DeliverNscaweb(	location=location,
 							data=data,
@@ -212,7 +212,7 @@ class OutputQueue(threading.Thread):
 							size=size,
 							queue_size=queue_size,
 							queue_bytes=queue_bytes,
-							logging=self.logging)
+							logger=self.logger)
 		elif type == 'nrdp':
 			connector = DeliverNrdp(	location=location,
 							data=data,
@@ -222,10 +222,10 @@ class OutputQueue(threading.Thread):
 							size=size,
 							queue_size=queue_size,
 							queue_bytes=queue_bytes,
-							logging=self.logging)			
+							logger=self.logger)			
 		connector.join(30)
 		if connector.isAlive() == True:
-			self.logging.put(['Error','A timeout occurred writing to location %s.'%(location)])
+			self.logger.error('A timeout occurred writing to location %s.'%(location))
 			return False
 		elif connector.status == False:
 			return False
@@ -237,14 +237,14 @@ class OutputQueue(threading.Thread):
 		else:
 			return 0
 class DeliverFile(threading.Thread):
-	def __init__(self,location=None,data=None,size=None,queue_size=None,queue_bytes='0',logging=None):
+	def __init__(self,location=None,data=None,size=None,queue_size=None,queue_bytes='0',logger=None):
 		threading.Thread.__init__(self)
 		self.location=location
 		self.data=data
 		self.size=size
 		self.queue_size=queue_size
 		self.queue_bytes=queue_bytes
-		self.logging=logging
+		self.logger=logger
 		self.status=False
 		self.daemon=True
 		self.start()
@@ -260,16 +260,16 @@ class DeliverFile(threading.Thread):
 			cmd.close()
 			end=time.time()
 			self.status=True
-			self.logging.put(['Normal',"Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes"%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes)])
+			self.logger.info("Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes"%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes))
 		except Exception as error:
 			self.statyus=False
-			self.logging.put(['Error','Error submitting data to file %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes)])
+			self.logger.error('Error submitting data to file %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes))
 class DeliverNamedPipe(threading.Thread):
-	def __init__(self,location=None,data=None,size=None,queue_size=None,queue_bytes='0',logging=None):
+	def __init__(self,location=None,data=None,size=None,queue_size=None,queue_bytes='0',logger=None):
 		threading.Thread.__init__(self)
 		self.location=location
 		self.data=data
-		self.logging = logging
+		self.logger = logger
 		self.status=False
 		self.size=size
 		self.queue_size=queue_size
@@ -289,19 +289,19 @@ class DeliverNamedPipe(threading.Thread):
 						cmd.write('\n'.join(self.data)+'\n')
 					cmd.close()
 					end=time.time()
-					self.logging.put(['Normal',"Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes."%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes)])
+					self.logger.info("Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes."%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes))
 					self.status=True
 				else:
-					self.logging.put(['Error',"%s is not a named pipe"%(self.location)])
+					self.logger.error("%s is not a named pipe"%(self.location))
 					self.status=False
 			else:
-				self.logging.put(['Error',"%s does not exist"%(self.location)])
+				self.logger.error("%s does not exist"%(self.location))
 				self.status=False
 		except Exception as error:
-			self.logging.put(['Error',"Error submitting data to %s. Reason: %s. Delivery queue left %s items. Size: %s bytes"%(self.location,error,self.queue_size,self.queue_bytes)])
+			self.logger.error("Error submitting data to %s. Reason: %s. Delivery queue left %s items. Size: %s bytes"%(self.location,error,self.queue_size,self.queue_bytes))
 			self.status=False
 class DeliverNscaweb(threading.Thread):
-	def __init__(self,location=None,data=None,username=None,password=None,size=None,queue_size=None,queue_bytes='0',logging=None):
+	def __init__(self,location=None,data=None,username=None,password=None,size=None,queue_size=None,queue_bytes='0',logger=None):
 		threading.Thread.__init__(self)
 		self.location=location
 		self.data=data
@@ -310,7 +310,7 @@ class DeliverNscaweb(threading.Thread):
 		self.size=size
 		self.queue_size=queue_size		
 		self.queue_bytes=queue_bytes
-		self.logging=logging
+		self.logger=logger
 		self.status=False
 		self.opener = urllib2.build_opener()
 		self.opener = urllib2.build_opener()
@@ -324,13 +324,13 @@ class DeliverNscaweb(threading.Thread):
 			conn = self.opener.open(self.location,nscaweb_data)
 			conn.close()
 			end=time.time()
-			self.logging.put(['Normal',"Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes."%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes)])
+			self.logger.info("Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes."%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes))
 			self.status=True
 		except Exception as error:
-			self.logging.put(['Error','Error submitting data to NSCAweb %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes)])
+			self.logger.error('Error submitting data to NSCAweb %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes))
 			self.status=False
 class DeliverNrdp(threading.Thread):
-	def __init__(self,location=None,data=None,username=None,password=None,token=None,size=None,queue_size=None,queue_bytes='0',logging=None):
+	def __init__(self,location=None,data=None,username=None,password=None,token=None,size=None,queue_size=None,queue_bytes='0',logger=None):
 		threading.Thread.__init__(self)
 		self.location=location
 		self.data=data
@@ -340,7 +340,7 @@ class DeliverNrdp(threading.Thread):
 		self.size=size
 		self.queue_size=queue_size
 		self.queue_bytes=queue_bytes
-		self.logging=logging
+		self.logger=logger
 		self.status=False
 		self.opener = urllib2.build_opener()
 		self.opener = urllib2.build_opener()
@@ -358,22 +358,22 @@ class DeliverNrdp(threading.Thread):
 				root = ElementTree.XML(content)
 				
 			except:
-				self.logging.put(['Error','Error submitting data to NRDP %s. Reason: NRDP answer was non xml.'%(self.location)])
+				self.logger.error('Error submitting data to NRDP %s. Reason: NRDP answer was non xml.'%(self.location))
 				self.status=False
 				conn.close()
 				return
 			
 			if root[0].text == "-1":
-				self.logging.put(['Error','Error submitting data to NRDP %s. Reason: %s.'%(self.location,root[1].text)])
+				self.logger.error('Error submitting data to NRDP %s. Reason: %s.'%(self.location,root[1].text))
 				self.status=False
 				conn.close()
 				return
 			else:
 				end=time.time()
-				self.logging.put(['Normal','Data succesfully submitted to %s in %s seconds. %s batch processed. Delivery queue left %s items. Size: %s bytes'%(self.location,round(end-start,3),"1",self.queue_size,self.queue_bytes)])
+				self.logger.info('Data succesfully submitted to %s in %s seconds. %s batch processed. Delivery queue left %s items. Size: %s bytes'%(self.location,round(end-start,3),"1",self.queue_size,self.queue_bytes))
 				self.status=True
 				conn.close()
 				return
 		except Exception as error:
-			self.logging.put(['Error','Error submitting data to NRDP %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes)])
+			self.logger.error('Error submitting data to NRDP %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes))
 			self.status=False

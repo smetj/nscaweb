@@ -24,11 +24,11 @@ import pexpect
 
 class Authenticate:
 	'''Class providing authentication.'''
-	def __init__(self,auth_type='default',database={},logging=None):
+	def __init__(self,auth_type='default',database={},logger=None):
 		self.auth_type=auth_type
 		self.database=database
-		self.logging=logging
-		self.logging.put(["Normal","Authentication method initiated of type: %s"%(self.auth_type)])
+		self.logger=logger
+		self.logger.info("Authentication method initiated of type: %s"%(self.auth_type))
 	def do(self,username,password):
 		'''Execute the authentication based upon type chosen at init.'''
 		if self.auth_type == 'none':
@@ -39,9 +39,9 @@ class Authenticate:
 			elif self.auth_type == 'pam':
 				return self.__pam(username=username,password=password)
 			else:
-				self.logging.put(["Warning","Unknown authentication method."])
+				self.logger.warn("Unknown authentication method.")
 		else:
-			self.logging.put(["Warning","Username or password can't be None or empty when authentication type is different than none."])
+			self.logger.warn("Username or password can't be None or empty when authentication type is different than none.")
 			return False
 	def __default(self,username,password):
 		'''Accepts username and password and depending upon the the auth style defined at init an auth type is chosen.'''
@@ -49,13 +49,13 @@ class Authenticate:
 			hash = hashlib.md5()
 			hash.update(password+'\n')
 			if hash.hexdigest() == self.database[username]:
-				self.logging.put(["Normal","Authentication succeeded for user %s."%(username)])
+				self.logger.info("Authentication succeeded for user %s."%(username))
 				return True
 			else:
-				self.logging.put(["Warning","Authentication failed for user %s."%(username)])
+				self.logger.warn("Authentication failed for user %s."%(username))
 				return False
 		else:
-			self.logging.put(["Warning","User %s is not defined."%(username)])
+			self.logger.warn("User %s is not defined."%(username))
 			return False
 	def __pam(self, username, password):
 		'''Accepts username and password and tried to use PAM for authentication'''
@@ -70,11 +70,11 @@ class Authenticate:
 		except Exception as err:
 			if child != None:
 				child.close()
-			self.logging.put(["Warning","Pam authentication failed."])
+			self.logger.warn("Pam authentication failed.")
 			return False
 		if result == 0:
-			self.logging.put(["Normal","Authentication succeeded for user %s."%(username)])
+			self.logger.info("Authentication succeeded for user %s."%(username))
 			return True
 		else:
-			self.logging.put(["Warning","Authentication failed for user %s."%(username)])
+			self.logger.info("Authentication failed for user %s."%(username))
 			return False
