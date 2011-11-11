@@ -260,8 +260,16 @@ class Server():
 			os.kill(os.getpid(),signal.SIGKILL)
 	def check_running(self):
 		if (os.path.exists(self.config['application']['pidfile'])):
-			sys.stderr.write('There is already a version of nscaweb running, if not delete the pidfile located at: %s\n'%(self.config['application']['pidfile']))
-			sys.exit(1)
+			pid_file = open(self.config['application']['pidfile'],'r')
+			pid = pid_file.readline()
+			pid_file.close()
+			try:
+				os.kill(int(pid),0)
+			except:
+				sys.stderr.write('PID file detected but no process with such a PID.  I will overwrite it.\n')
+			else:
+				sys.stderr.write('There is already a version of NSCAweb running with pid %s\n'%(pid))
+				sys.exit(1)
 	def start(self,debug=False):
 		#Set logging environment
 		global logger
