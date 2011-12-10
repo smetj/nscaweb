@@ -15,7 +15,7 @@ NSCAweb has following features:
  - Submit data to many types of destinations: named pipes (nagios.cmd), NSCAweb, NRDP or a file.
  - Loadbalance and failover between multiple urls per destination.
  - Duplicate and forward passive check results to an "unlimited" amount of destinations.
- - Submit messages to 1 destination or all destinations depending on the url messages are to.
+ - Submit messages to 1 destination or all destinations depending on the url messages are send to.
  - Simultaneous local and remote delivery.
  - Each destination has an independent, dedicated thread and queue.
  - Buffering of unavailable destinations and resubmitting when destination comes available to prevent data loss.
