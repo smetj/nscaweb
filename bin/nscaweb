@@ -179,7 +179,7 @@ class Logger():
             self.log.addHandler(self.scr_handler)
         if syslog == '1':
             from logging.handlers import SysLogHandler
-            if os.path.isfile('/var/run/syslog'):
+            if os.path.exists('/var/run/syslog'):
                 self.sys_handler = SysLogHandler(address='/var/run/syslog')
             else:
                 self.sys_handler = SysLogHandler(address='/dev/log')
