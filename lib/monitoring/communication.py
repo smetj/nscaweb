@@ -320,7 +320,9 @@ class DeliverNscaweb(threading.Thread):
 	def run(self):
 		start=time.time()
 		try:
-			nscaweb_data = urlencode({'username': self.username, 'password': self.password, 'input': '\n'.join(self.data)})
+            data = '\n'.join(self.data)
+            data = data.decode("ascii", "ignore")
+			nscaweb_data = urlencode({'username': self.username, 'password': self.password, 'input': data})
 			conn = self.opener.open(self.location,nscaweb_data)
 			conn.close()
 			end=time.time()
