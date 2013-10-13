@@ -34,6 +34,7 @@ from cherrypy import log
 from configobj import ConfigObj
 from optparse import OptionParser
 from time import gmtime
+from pkg_resources import get_distribution
 
 class WebServer(threading.Thread):
     def __init__(self, host, port, pid, ssl="off", ssl_certificate=None, ssl_private_key=None, htmlContent=None, enable_logging="1", blockcallback=None):
@@ -296,10 +297,10 @@ class Server():
 
         #Extend the search path with library directory.
         sys.path.append(self.config['application']['libs'])
-        from monitoring.server import ThreadControl
-        from monitoring.server import ConfigFileMonitor
-        from monitoring.authentication import Authenticate
-        from monitoring.communication import SubmitListener
+        from nscaweb.server import ThreadControl
+        from nscaweb.server import ConfigFileMonitor
+        from nscaweb.authentication import Authenticate
+        from nscaweb.communication import SubmitListener
 
         #Create pid
         pidfile=open(self.config["application"]["pidfile"],'w')
@@ -397,7 +398,7 @@ class Help():
     def __init__(self):
         pass
     def usage(self):
-        print ('NSCAweb %s Copyright 2009,2010,2011 by Jelle Smet <jelle@smetj.net>' %(version))
+        print ('NSCAweb %s Copyright 2009,2010,2011 by Jelle Smet <jelle@smetj.net>' %( get_distribution('nscaweb').version))
         print ('''Usage: nscaweb command --config configfile
 
     Valid commands:
