@@ -2,21 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #       communication.py
-#       
+#
 #       Copyright 2010 Jelle Smet <web@smetj.net>
-#       
+#
 #       This file is part of Monitoring python library.
-#       
+#
 #           Monitoring python library is free software: you can redistribute it and/or modify
 #           it under the terms of the GNU General Public License as published by
 #           the Free Software Foundation, either version 3 of the License, or
 #           (at your option) any later version.
-#       
+#
 #           Monitoring python library is distributed in the hope that it will be useful,
 #           but WITHOUT ANY WARRANTY; without even the implied warranty of
 #           MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #           GNU General Public License for more details.
-#       
+#
 #           You should have received a copy of the GNU General Public License
 #           along with Monitoring python library.  If not, see <http://www.gnu.org/licenses/>.
 import socket
@@ -75,7 +75,7 @@ class SubmitListener(threading.Thread):
 	"requestUUID":uuid
 	"data":"what to write to command pipe"
       }'''
-	
+
 	def __init__(self,timeout=60,retries=5,chunks=1000,quota=0,logger=None,blockcallback=None):
 		threading.Thread.__init__(self)
 		self.timeout=timeout
@@ -102,7 +102,7 @@ class SubmitListener(threading.Thread):
 	def dump(self,package):
 		'''Using dump, the average package size is calculated prior to submitting it to the Queue.  This is the preferred way for writing data ino SubmitListener.'''
 		queue_name = self.__queue_name(package['destination'])
-		
+
 		#If we don't have a queue like that create a new one
 		if not self.output_queues.has_key(queue_name):
 			self.output_queues[queue_name] = OutputQueue(	name=queue_name,
@@ -112,8 +112,8 @@ class SubmitListener(threading.Thread):
 									chunks=self.chunks,
 									logger=self.logger,
 									blockcallback=self.loop)
-		
-		if self.quota > 0:							
+
+		if self.quota > 0:
 			if self.output_queues[queue_name].avg_data_size * self.output_queues[queue_name].queue.qsize() < self.quota:
 				#Keep track of the average data size
 				self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['external_command'])))/2
@@ -123,8 +123,8 @@ class SubmitListener(threading.Thread):
 		else:
 			self.output_queues[queue_name].avg_data_size=(self.output_queues[queue_name].avg_data_size+int(sys.getsizeof(package['external_command'])))/2
 			self.output_queues[queue_name].queue.put(package['external_command'])
-			
-		
+
+
 	def __submit(self,package):
 		#Check if queue exists
 		#if a queue with such a destination doesn't exist anymore then create a new one
@@ -222,7 +222,7 @@ class OutputQueue(threading.Thread):
 							size=size,
 							queue_size=queue_size,
 							queue_bytes=queue_bytes,
-							logger=self.logger)			
+							logger=self.logger)
 		connector.join(30)
 		if connector.isAlive() == True:
 			self.logger.error('A timeout occurred writing to location %s.'%(location))
@@ -308,7 +308,7 @@ class DeliverNscaweb(threading.Thread):
 		self.username=username
 		self.password=password
 		self.size=size
-		self.queue_size=queue_size		
+		self.queue_size=queue_size
 		self.queue_bytes=queue_bytes
 		self.logger=logger
 		self.status=False
@@ -316,7 +316,7 @@ class DeliverNscaweb(threading.Thread):
 		self.opener = urllib2.build_opener()
 		self.opener.addheaders = [('User-agent', 'NSCAweb')]
 		self.daemon=True
-		self.start()		
+		self.start()
 	def run(self):
 		start=time.time()
 		try:
@@ -348,7 +348,7 @@ class DeliverNrdp(threading.Thread):
 		self.opener = urllib2.build_opener()
 		self.opener.addheaders = [('User-agent', 'NSCAweb')]
 		self.daemon=True
-		self.start()	
+		self.start()
 	def run(self):
 		start=time.time()
 		try:
@@ -358,13 +358,13 @@ class DeliverNrdp(threading.Thread):
 				content = conn.read()
 				conn.close()
 				root = ElementTree.XML(content)
-				
+
 			except:
 				self.logger.error('Error submitting data to NRDP %s. Reason: NRDP answer was non xml.'%(self.location))
 				self.status=False
 				conn.close()
 				return
-			
+
 			if root[0].text == "-1":
 				self.logger.error('Error submitting data to NRDP %s. Reason: %s.'%(self.location,root[1].text))
 				self.status=False
