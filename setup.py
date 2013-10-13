@@ -28,7 +28,7 @@ import sys
 
 PROJECT = 'nscaweb'
 VERSION = '0.1.20'
-install_requires=['cherrypy','configobj','greenlet>=0.3.2','jsonschema','prettytable','python-daemon',"pyyaml"]
+install_requires=['cherrypy','configobj']
 
 try:
     long_description = open('README.rst', 'rt').read()
