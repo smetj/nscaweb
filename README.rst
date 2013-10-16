@@ -26,7 +26,6 @@ NSCAweb has following features:
  - Trivial to submit check results using http post.
  - Submit check results in bulk or one by one.
  - Use curl as a client from the command line.
- - It's fast.
 
 Installation
 ------------
