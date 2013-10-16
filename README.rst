@@ -74,6 +74,8 @@ The configuration file is in ini style and has 4 sections:
 application
 ~~~~~~~~~~~
 
+The application section controls the behaviour of the daemon itself.
+
 .. code-block:: ini
 
     [ "application" ]
@@ -138,3 +140,124 @@ application
     creating your certificate you will also have your private key. This is a quite
     sensitive piece of information. Make sure it's on a safe place.
 
+
+settings
+~~~~~~~~
+
+The settings section allows you to control how the application behaves and
+responds to requests.
+
+.. code-block:: ini
+
+    [ "settings" ]
+        config_check_interval   = "10"
+        enable_pipe_submit      = "1"
+        nagios_cmd              = "/var/lib/nagios3/rw/nagios"
+        queue_process_batch     = "5000"
+
+
+*   config_check_interval
+
+    Defines the value in seconds of the config check interval. This parameter
+    determines how much time is there between checking if the config file has been
+    changed.
+
+* enable_pipe_submit
+
+    Enables or disables writing passive checks to a local Nagios External Command
+    file. Valid values are 0(disable) and 1(enable).
+
+
+* nagios_cmd
+
+    Defines the location of the Nagios external command file. This is the absolute
+    filename of the Nagios external command file. Make sure the user under which
+    NSCAweb is running has sufficient privileges to write.
+
+
+* queue_process_batch
+
+    Defines the maximum amount of passive check results to submit at once.
+
+
+nscaweb_definitions
+~~~~~~~~~~~~~~~~~~~
+
+The section defines additional NSCAweb destinations to which this instance has
+to forward incoming passive checks. Multiple NSCAweb destinations are
+possible. The amount of destinations is limited to the available resources.
+All passive checks coming into NSCAweb are put into the master queue. Each
+defined destination (pipe & nscaweb definitions) has its own queue to which
+all messages from the master queue are copied.
+
+.. code-block:: ini
+
+    [ "nscaweb_definitions" ]
+        [[ "main_monitoring_1" ]]
+            enable          = "0"
+            host            = "host_running_nscaweb_1:5668"
+            username        = "default"
+            password        = "changeme"
+            compress_data   = "0"
+
+        [[ "main_monitoring_2" ]]
+            enable          = "0"
+            host            = "host_running_nscaweb_2:5668"
+            username        = "default"
+            password        = "changeme"
+            compress_data   = "0"
+
+*   instance name
+
+    Note: You can't use 'pipe' as an instance name as it's a reserved name for
+    internal usage.
+    In the above example the instance name is "main_monitoring_1".
+    It is freely chosen, unique name identifying the NSCAweb destination. Keep the
+    name informative, as it will help you identifying in the log which destination
+    is not behaving well. You can create as many destinations/definitions as you
+    want.
+
+*   enable
+
+    This parameter enables or disables the NSCAweb destination definition. Allowed
+    values are 0(disable) and 1(enable).
+
+*   host
+
+    This parameter defines the address of the remote host running NSCAweb. You can
+    use a hostname or ipaddress. The portnumber can be added using :
+
+*   username
+
+    The username to authenticate against the remote NSCAweb instance.
+
+*   password
+
+    The password to authenticate against the remote NSCAweb instance.
+
+authentication
+~~~~~~~~~~~~~~
+
+The authentication section contains the usernames and passwords used to
+authenticate to NSCAweb in order to dump data.
+
+.. code-block:: ini
+
+    [ "authentication" ]
+            default         = "6ac371cc3dc9d38cf33e5c146617df75"
+
+
+This is a simple section which contains a list of username and encrypted
+password pairs. In this case there's only 1 user defined with the login name
+"default" and password "changeme".
+
+The password is encrypted as an md5sum.  To generate a hash value out of a
+string you can execute the following:
+
+    $ echo changeme|md5sum 
+
+The authentication happens by submitting a login and password form field. You
+must have at least 1 entry here.
+
+Warning: Each NSCAweb installation comes with the default username "default"
+and password "changeme". CHANGE IT!.
