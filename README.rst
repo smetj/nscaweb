@@ -259,8 +259,8 @@ string you can execute the following:
 The authentication happens by submitting a login and password form field. You
 must have at least 1 entry here.
 
-**Warning: Each NSCAweb installation comes with the default username "default"
-and password "changeme". CHANGE IT!.**
+**Warning**: Each NSCAweb installation comes with the default username "default"
+and password "changeme". CHANGE IT!.
 
 
 Sending data to NSCAweb
@@ -282,18 +282,20 @@ described below. When you use multiple lines as plugin output then use "\\\n"
 to separate those multiple lines. NSCAweb will consider each "\n" as a new
 Nagios external command.
 
-**Warning: Keep in mind that all data you send to NSCAweb needs to be URL
-encoded. Submit 1 check result to NSCAweb using curl**
+**Warning**: Keep in mind that all data you send to NSCAweb needs to be URL
+encoded. Submit 1 check result to NSCAweb using curl.
 
-**Warning: Make sure to use a version of curl which supports the '--data-
-urlencode' parameter. Now lets dump the result for 1 service check into it
-using curl:**
+**Warning**: Make sure to use a version of curl which supports the '--data-
+urlencode' parameter.
+
+Now lets dump the result for 1 service check into it using curl:
 
     $ now=$(date +%s)
 
     $ data=$(printf "[%lu] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Whatever\n" $now)
     
     $ curl -d username="default" -d password="changeme" --data-urlencode input="$data" localhost:5668
+
 
 Submit 500 check results at once to NSCAweb using curl
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -323,6 +325,8 @@ Consider following file:
     ...snip...
     [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 500;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
 
+
+Execute:
 
     $ curl -d username="default" -d password="changeme" --data-urlencode input="$(cat /tmp/test_result_file.txt) localhost:5668
 
