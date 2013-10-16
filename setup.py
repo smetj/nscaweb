@@ -28,7 +28,7 @@ import sys
 
 PROJECT = 'nscaweb'
 VERSION = '0.1.20'
-install_requires=['cherrypy','configobj']
+install_requires=['cherrypy','configobj','python-daemon','pexpect']
 
 try:
     long_description = open('README.rst', 'rt').read()
@@ -81,6 +81,6 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     entry_points={
-        'console_scripts': ['nscaweb = nscaweb.nscaweb:main']
+        'console_scripts': ['nscaweb = nscaweb.main:main']
     }
 )
