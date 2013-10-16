@@ -162,20 +162,20 @@ responds to requests.
     determines how much time is there between checking if the config file has been
     changed.
 
-* enable_pipe_submit
+*   enable_pipe_submit
 
     Enables or disables writing passive checks to a local Nagios External Command
     file. Valid values are 0(disable) and 1(enable).
 
 
-* nagios_cmd
+*   nagios_cmd
 
     Defines the location of the Nagios external command file. This is the absolute
     filename of the Nagios external command file. Make sure the user under which
     NSCAweb is running has sufficient privileges to write.
 
 
-* queue_process_batch
+*   queue_process_batch
 
     Defines the maximum amount of passive check results to submit at once.
 
