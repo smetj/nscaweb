@@ -331,4 +331,4 @@ Execute:
     $ curl -d username="default" -d password="changeme" --data-urlencode input="$(cat /tmp/test_result_file.txt) localhost:5668
 
 
-**Just make sure that the \n in between the multiline output is literally send over the NSCAweb.**s
+**Just make sure that the \n in between the multiline output is literally send over the NSCAweb.**
