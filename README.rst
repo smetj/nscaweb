@@ -27,6 +27,15 @@ NSCAweb has following features:
  - Submit check results in bulk or one by one.
  - Use curl as a client from the command line.
 
+
+Support
+-------
+
+Post a message in Google groups: https://groups.google.com/forum/#!forum/nscaweb
+
+Submit bugreports to: https://github.com/smetj/nscaweb/issues
+
+
 Installation
 ------------
 
