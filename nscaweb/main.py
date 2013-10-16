@@ -30,6 +30,11 @@ import threading
 import daemon
 import select
 import logging
+from nscaweb.server import ThreadControl
+from nscaweb.server import ConfigFileMonitor
+from nscaweb.authentication import Authenticate
+from nscaweb.communication import SubmitListener
+
 from cherrypy import log
 from configobj import ConfigObj
 from optparse import OptionParser
@@ -295,12 +300,6 @@ class Server():
         logger = logger_object.log
         logger.info('started')
 
-        #Extend the search path with library directory.
-        sys.path.append(self.config['application']['libs'])
-        from nscaweb.server import ThreadControl
-        from nscaweb.server import ConfigFileMonitor
-        from nscaweb.authentication import Authenticate
-        from nscaweb.communication import SubmitListener
 
         #Create pid
         pidfile=open(self.config["application"]["pidfile"],'w')
@@ -411,7 +410,7 @@ class Help():
 
         debug   Starts the nscaweb daemon in the foreground while showing real time log and debug messages.
             The process can be stopped with ctrl+c which will ends NSCAweb gracefully.
-            A seccond ctrl+c will kill NSCAweb.
+            A second ctrl+c will kill NSCAweb.
 
     Parameters:
         --config    Defines the location of the config file to use.  The parameter is obligatory.
