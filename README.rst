@@ -259,5 +259,70 @@ string you can execute the following:
 The authentication happens by submitting a login and password form field. You
 must have at least 1 entry here.
 
-Warning: Each NSCAweb installation comes with the default username "default"
-and password "changeme". CHANGE IT!.
+**Warning: Each NSCAweb installation comes with the default username "default"
+and password "changeme". CHANGE IT!.**
+
+
+Sending data to NSCAweb
+-----------------------
+
+NSCAweb is a http based daemon which receives data over http post requests. It
+accepts data just like your browser posts and requests data to a webserver. In
+order to interact with NSCAweb you need an http client such as wget, curl,
+libwww, ...
+
+There are 3 form fields available:
+
+* username
+* password
+* input
+
+The input field should contain 1 or more entries with the same syntax as
+described below. When you use multiple lines as plugin output then use "\\\n"
+to separate those multiple lines. NSCAweb will consider each "\n" as a new
+Nagios external command.
+
+**Warning: Keep in mind that all data you send to NSCAweb needs to be URL
+encoded. Submit 1 check result to NSCAweb using curl**
+
+**Warning: Make sure to use a version of curl which supports the '--data-
+urlencode' parameter. Now lets dump the result for 1 service check into it
+using curl:**
+
+    now=$(date +%s)
+    data=$(printf "[%lu] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Whatever\n" $now)
+    curl -d username="default" -d password="changeme" --data-urlencode input="$data" localhost:5668
+
+Submit 500 check results at once to NSCAweb using curl
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Let's say I have 500 check results I want to dump in 1 go.
+
+Consider following file:
+
+File: /tmp/test_result_file.txt
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 2;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 3;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 4;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 5;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 6;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 7;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 8;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 9;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 10;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 11;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 12;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 13;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 14;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 15;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 16;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 17;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 18;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+...snip...
+[1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 500;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+
+    curl -d username="default" -d password="changeme" --data-urlencode input="$(cat /tmp/test_result_file.txt) localhost:5668
+
+
+**Just make sure that the \n in between the multiline output is literally send over the NSCAweb.**s
