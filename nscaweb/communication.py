@@ -262,7 +262,7 @@ class DeliverFile(threading.Thread):
             self.status=True
             self.logger.info("Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes"%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes))
         except Exception as error:
-            self.statyus=False
+            self.status=False
             self.logger.error('Error submitting data to file %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes))
 class DeliverNamedPipe(threading.Thread):
     def __init__(self,location=None,data=None,size=None,queue_size=None,queue_bytes='0',logger=None):
