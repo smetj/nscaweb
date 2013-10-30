@@ -51,7 +51,6 @@ class ThreadControl():
                 try:
                     group[thread].stop()
                 except:
-                    raise
                     pass
                 if group[thread].loop and group[thread].name != 'last' and group[thread].is_alive():
                     return False

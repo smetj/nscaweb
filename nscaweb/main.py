@@ -217,7 +217,6 @@ class NamedPipe(threading.Thread):
         try:
             os.unlink ( self.absolutePath )
         except:
-            raise
             pass
         try:
             os.mkfifo ( self.absolutePath )
@@ -262,7 +261,6 @@ class NamedPipe(threading.Thread):
             breakBlock.write('\n')
             breakBlock.close()
         except:
-            raise
             pass
 
     def construct_package(self, name, queueDefinitions, line):
@@ -295,7 +293,6 @@ class Server():
             try:
                 os.kill(int(pid),0)
             except:
-                raise
                 sys.stderr.write('PID file detected but no process with such a PID.  I will overwrite it.\n')
             else:
                 sys.stderr.write('There is already a version of NSCAweb running with pid %s\n'%(pid))
