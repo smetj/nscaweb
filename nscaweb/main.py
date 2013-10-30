@@ -120,6 +120,7 @@ class HtmlContent():
                                     try:
                                         self.submitListener.dump(package)
                                     except Exception:
+                                        raise
                                         logger.warn("Queue size limit reached. Data purged.")
                                         continue
                         logger.info("%s items dumped into the broadcast queue for user %s from IP %s."%(counter,form['username'],cherrypy.request.remote.ip))
@@ -132,6 +133,7 @@ class HtmlContent():
                                 try:
                                     self.submitListener.dump(package)
                                 except Exception:
+                                    raise
                                     logger.warn("Queue %s size limit reached. Data discarted."%(args[0]))
                                     raise cherrypy.HTTPError("500 Internal Server Error", "Queue %s is full. Data discarted."%(args[0]))
 
@@ -145,8 +147,10 @@ class HtmlContent():
             else:
                 logger.warn("Incomplete data submitted from IP %s."%(cherrypy.request.remote.ip))
         except cherrypy.HTTPError as err:
+            raise
             raise cherrypy.HTTPError("500 Internal Server Error", str(err[1]))
         except Exception as error:
+            raise
             logger.warn("Malformed data submitted from IP %s. Maybe something wrong with the destination configuration in the config file."%(cherrypy.request.remote.ip))
     queue.exposed = True
 
@@ -213,10 +217,12 @@ class NamedPipe(threading.Thread):
         try:
             os.unlink ( self.absolutePath )
         except:
+            raise
             pass
         try:
             os.mkfifo ( self.absolutePath )
         except Exception as err:
+            raise
             logger.critical('There was an error creating the named pipe %s. Reason: %s'%(self.absolutePath,err))
             return
         else:
@@ -237,6 +243,7 @@ class NamedPipe(threading.Thread):
                 else:
                     time.sleep(0.1)
         except Exception as err:
+            raise
             logger.critical('There was an error reading from the named pipe %s. Reason: %s'%(self.absolutePath,err))
             os.unlink(self.absolutePath)
             return
@@ -244,6 +251,7 @@ class NamedPipe(threading.Thread):
             fifo.close()
             os.unlink ( self.absolutePath )
         except:
+            raise
             pass
         logger.info('Named pipe listener with name %s has exit.'%(self.name))
         return
@@ -254,6 +262,7 @@ class NamedPipe(threading.Thread):
             breakBlock.write('\n')
             breakBlock.close()
         except:
+            raise
             pass
 
     def construct_package(self, name, queueDefinitions, line):
@@ -274,6 +283,7 @@ class Server():
         try:
             self.config=ConfigObj(self.configfile)
         except Exception as err:
+            raise
             sys.stderr.write('There appears to be an error in your configfile:\n')
             sys.stderr.write('\t'+ str(type(err))+" "+str(err) + "\n" )
             os.kill(os.getpid(),signal.SIGKILL)
@@ -285,6 +295,7 @@ class Server():
             try:
                 os.kill(int(pid),0)
             except:
+                raise
                 sys.stderr.write('PID file detected but no process with such a PID.  I will overwrite it.\n')
             else:
                 sys.stderr.write('There is already a version of NSCAweb running with pid %s\n'%(pid))
@@ -381,6 +392,7 @@ class Server():
             pidfile.close()
             os.kill(int(pid),signal.SIGINT)
         except Exception as error:
+            raise
             sys.stderr.write('Could not stop NSCAweb.  Reason: %s\n'%error)
 
     def kill(self):
@@ -391,6 +403,7 @@ class Server():
             os.remove(self.config["application"]["pidfile"])
             os.kill(int(pid),signal.SIGKILL)
         except Exception as error:
+            raise
             sys.stderr.write('Could not kill NSCAweb.  Reason: %s\n'%error)
 
 class Help():
@@ -456,6 +469,7 @@ def main():
             print ('Unknown option %s \n' %(commandline_actions[0]))
             sys.exit()
     except Exception as err:
+        raise
         sys.stderr.write('A fatal error has occurred.\n')
         sys.stderr.write('Please file a bug report to https://github.com/smetj/nscaweb/issues including:\n')
         sys.stderr.write('\t - NSCAweb version.\n')

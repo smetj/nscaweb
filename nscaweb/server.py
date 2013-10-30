@@ -51,6 +51,7 @@ class ThreadControl():
                 try:
                     group[thread].stop()
                 except:
+                    raise
                     pass
                 if group[thread].loop and group[thread].name != 'last' and group[thread].is_alive():
                     return False
@@ -70,6 +71,7 @@ class ConfigFileMonitor(threading.Thread):
         try:
             self.file=ConfigObj(self.config_file)
         except Exception as err:
+            raise
             sys.stderr.write('There appears to be an error in your configfile:\n')
             sys.stderr.write('\t'+ str(type(err))+" "+str(err) + "\n" )
             os.kill(os.getpid(),signal.SIGKILL)
@@ -90,6 +92,7 @@ class ConfigFileMonitor(threading.Thread):
                     self.config=ConfigObj(self.config_file)
                     self.logger.info("The config file is reloaded.")
                 except:
+                    raise
                     self.logger.error("The config file has not been loaded as it contains errors.")
                     previous_value=current_value
             time.sleep(1)

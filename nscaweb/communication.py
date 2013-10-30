@@ -62,6 +62,7 @@ class Lookup():
             hostname = socket.gethostbyaddr(ip)
             return hostname.lower()
         except socket.error:
+            raise
             return ip.lower()
 class SubmitListener(threading.Thread):
     '''A thread which monitors the input_queue for data and submits this to the correct OutputQueue, and if that doesn't exist, it creates a new OutputQueue object
@@ -262,7 +263,8 @@ class DeliverFile(threading.Thread):
             self.status=True
             self.logger.info("Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes"%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes))
         except Exception as error:
-            self.statyus=False
+            raise
+            self.status=False
             self.logger.error('Error submitting data to file %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes))
 class DeliverNamedPipe(threading.Thread):
     def __init__(self,location=None,data=None,size=None,queue_size=None,queue_bytes='0',logger=None):
@@ -298,6 +300,7 @@ class DeliverNamedPipe(threading.Thread):
                 self.logger.error("%s does not exist"%(self.location))
                 self.status=False
         except Exception as error:
+            raise
             self.logger.error("Error submitting data to %s. Reason: %s. Delivery queue left %s items. Size: %s bytes"%(self.location,error,self.queue_size,self.queue_bytes))
             self.status=False
 class DeliverNscaweb(threading.Thread):
@@ -329,6 +332,7 @@ class DeliverNscaweb(threading.Thread):
             self.logger.info("Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes."%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes))
             self.status=True
         except Exception as error:
+            raise
             self.logger.error('Error submitting data to NSCAweb %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes))
             self.status=False
 class DeliverNrdp(threading.Thread):
@@ -360,6 +364,7 @@ class DeliverNrdp(threading.Thread):
                 root = ElementTree.XML(content)
 
             except:
+                raise
                 self.logger.error('Error submitting data to NRDP %s. Reason: NRDP answer was non xml.'%(self.location))
                 self.status=False
                 conn.close()
@@ -377,5 +382,6 @@ class DeliverNrdp(threading.Thread):
                 conn.close()
                 return
         except Exception as error:
+            raise
             self.logger.error('Error submitting data to NRDP %s. Reason: %s. Delivery queue left %s items. Size: %s bytes'%(self.location,error,self.queue_size,self.queue_bytes))
             self.status=False

@@ -68,6 +68,7 @@ class Authenticate:
             result=child.expect(username)
             child.close()
         except Exception as err:
+            raise
             if child != None:
                 child.close()
             self.logger.warn("Pam authentication failed.")
