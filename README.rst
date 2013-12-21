@@ -91,11 +91,10 @@ The application section controls the behaviour of the daemon itself.
         host                = "0.0.0.0"
         port                = "5668"
         pidfile             = "/opt/nscaweb/var/nscaweb.pid"
-        accesslogfile       = "/opt/nscaweb/var/nscaweb_access.log"
-        errorlogfile        = "/opt/nscaweb/var/nscaweb_errors.log"
         sslengine           = "off"
         sslcertificate      = ""
         sslprivatekey       = ""
+        queue_quota         = "104857600"
 
 
 *   host
@@ -120,16 +119,6 @@ The application section controls the behaviour of the daemon itself.
     for server control. Do not delete this file while NSCAweb is running in
     background mode.
 
-*   accesslogfile
-
-    The location of the access logfile. This logfile contains all client requests.
-    It basically has the same output as a webserver log file.
-
-*   errorlogfile
-
-    The location of the error logfile. This logfile contains all error and debug
-    related information.
-
 *   sslengine
 
     Makes NSCAweb listen to https instead of standard http and encrypt all
@@ -149,48 +138,61 @@ The application section controls the behaviour of the daemon itself.
     creating your certificate you will also have your private key. This is a quite
     sensitive piece of information. Make sure it's on a safe place.
 
+*   queue_quota
 
-settings
-~~~~~~~~
+    The value in bytes a queue is allowed to contain before refusing data.
 
-The settings section allows you to control how the application behaves and
-responds to requests.
+logging
+~~~~~~~
+
+Logging related options
 
 .. code-block:: ini
 
-    [ "settings" ]
-        config_check_interval   = "10"
-        enable_pipe_submit      = "1"
-        nagios_cmd              = "/var/lib/nagios3/rw/nagios"
-        queue_process_batch     = "5000"
+    [ "logging" ]
+        logfile             = "/var/log/nagios/nscaweb.log"
+        enable_syslog       = "1"
+        enable_http_logging = "0"
+
+*   logfile
+
+    The location of the logfile.  If commented, no logfile is created.
+
+*   enable_syslog
+
+    If enabled, writes logs to syslog.
+
+*   enable_http_logging
+
+    If enabled, includes any http request related logging to the log destination.
+
+pipes
+~~~~~
+
+NSCAweb can accept data over named pipe.
+
+.. code-block:: ini
+
+    [ "pipes" ]
+        enable          = "1"
+        directory       = "/var/tmp/"
+
+*   enable
+
+    When enabled, creates the named pipes.
+
+*   directory
+
+    The location of the named pipes.
 
 
-*   config_check_interval
+For each defined destination a corresponding named pipe is created.
+Submitting data to a named pipe results in that data being send to the
+corresponding destination. A special "broadcast" named pipe is also created
+which submits incoming data to all defined destinations.
 
-    Defines the value in seconds of the config check interval. This parameter
-    determines how much time is there between checking if the config file has been
-    changed.
-
-*   enable_pipe_submit
-
-    Enables or disables writing passive checks to a local Nagios External Command
-    file. Valid values are 0(disable) and 1(enable).
-
-
-*   nagios_cmd
-
-    Defines the location of the Nagios external command file. This is the absolute
-    filename of the Nagios external command file. Make sure the user under which
-    NSCAweb is running has sufficient privileges to write.
-
-
-*   queue_process_batch
-
-    Defines the maximum amount of passive check results to submit at once.
-
-
-nscaweb_definitions
-~~~~~~~~~~~~~~~~~~~
+destinations
+~~~~~~~~~~~~
 
 The section defines additional NSCAweb destinations to which this instance has
 to forward incoming passive checks. Multiple NSCAweb destinations are
@@ -201,35 +203,51 @@ all messages from the master queue are copied.
 
 .. code-block:: ini
 
-    [ "nscaweb_definitions" ]
-        [[ "main_monitoring_1" ]]
-            enable          = "0"
-            host            = "host_running_nscaweb_1:5668"
-            username        = "default"
-            password        = "changeme"
-            compress_data   = "0"
+    [ "destinations" ]
 
-        [[ "main_monitoring_2" ]]
-            enable          = "0"
-            host            = "host_running_nscaweb_2:5668"
-            username        = "default"
-            password        = "changeme"
-            compress_data   = "0"
+        [[ "local" ]]
+            enable      = "0"
+            type        = "local"
+            locations   = "/opt/nagios/var/rw/nagios.cmd"
 
-*   instance name
+        [[ "master" ]]
+            enable      = "0"
+            type        = "nscaweb"
+            locations   = "http://prod-ctrl-nagios-001.almere.tomtom.com:15668/queue/local"
+            username    = "default"
+            password    = "changeme"
 
-    Note: You can't use 'pipe' as an instance name as it's a reserved name for
-    internal usage.
-    In the above example the instance name is "main_monitoring_1".
-    It is freely chosen, unique name identifying the NSCAweb destination. Keep the
-    name informative, as it will help you identifying in the log which destination
-    is not behaving well. You can create as many destinations/definitions as you
-    want.
+        [[ "nagiosWithNrdp" ]]
+            enable      = "0"
+            type        = "nrdp"
+            locations   = "http://nagios/nrdp/"
+            username    = "default"
+            password    = "changeme"
+            token       = "mysecrettoken"
+
+        [[ "debugging" ]]
+            enable      = "0"
+            type        = "file"
+            locations   = "/tmp/external_commands.log"
+
+Each destination should have a unique name.  The name identifies the
+destination when submitting data.  A destination name is free to choose.  In
+the above example we have defined names: local, master, nagiosWithNrdp and
+debugging.
 
 *   enable
 
     This parameter enables or disables the NSCAweb destination definition. Allowed
     values are 0(disable) and 1(enable).
+
+*   type
+
+    The type of destination.  There are 4 types:
+
+    - nscaweb
+    - nrpd
+    - local
+    - file
 
 *   host
 
@@ -263,7 +281,7 @@ password pairs. In this case there's only 1 user defined with the login name
 The password is encrypted as an md5sum.  To generate a hash value out of a
 string you can execute the following:
 
-    $ echo changeme|md5sum 
+    $ echo changeme|md5sum
 
 The authentication happens by submitting a login and password form field. You
 must have at least 1 entry here.
@@ -272,8 +290,33 @@ must have at least 1 entry here.
 and password "changeme". CHANGE IT!.
 
 
-Sending data to NSCAweb
------------------------
+Transport data with NSCAweb
+---------------------------
+
+A typical NSCAweb setup looks like this:
+
+.. image:: docs/nscaweb.png
+
+NSCAweb has for each defined destination
+
+From command line to NSCAweb
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes you have to submit a check result (or other command) into Nagios
+from a remote host.  You can do that by simply using curl or wget from command
+line.  In the above diagram, we have server_3 sending check updates to
+server_4.  Server_4 then writes the incoming check results into the Nagios
+external command pipe.
+
+
+
+Following example command does that:
+
+    printf "[%lu] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Whatever\n" $(date +%s) | \
+    curl -d username="default" -d password="changeme" --data-urlencode input=@- http://localhost:5668/queue
+
+From NSCAweb to NSCAweb
+~~~~~~~~~~~~~~~~~~~~~~~
 
 NSCAweb is a http based daemon which receives data over http post requests. It
 accepts data just like your browser posts and requests data to a webserver. In
@@ -302,8 +345,14 @@ Now lets dump the result for 1 service check into it using curl:
     $ now=$(date +%s)
 
     $ data=$(printf "[%lu] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Whatever\n" $now)
-    
+
     $ curl -d username="default" -d password="changeme" --data-urlencode input="$data" localhost:5668
+
+
+From Nagios
+~~~~~~~~~~~
+
+When sending check results from Nagios
 
 
 Submit 500 check results at once to NSCAweb using curl
