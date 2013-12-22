@@ -2,21 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #       nscaweb
-#       
+#
 #       Copyright 2010 Jelle Smet <web@smetj.net>
-#       
+#
 #       This file is part of NSCAweb.
-#       
+#
 #           NSCAweb is free software: you can redistribute it and/or modify
 #           it under the terms of the GNU General Public License as published by
 #           the Free Software Foundation, either version 3 of the License, or
 #           (at your option) any later version.
-#       
+#
 #           NSCAweb is distributed in the hope that it will be useful,
 #           but WITHOUT ANY WARRANTY; without even the implied warranty of
 #           MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #           GNU General Public License for more details.
-#       
+#
 #           You should have received a copy of the GNU General Public License
 #           along with NSCAweb.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -30,16 +30,19 @@ import threading
 import daemon
 import select
 import logging
+from nscaweb.server import ThreadControl
+from nscaweb.server import ConfigFileMonitor
+from nscaweb.authentication import Authenticate
+from nscaweb.communication import SubmitListener
+
 from cherrypy import log
 from configobj import ConfigObj
 from optparse import OptionParser
 from time import gmtime
-
-version="0.1.19"
-projecturl="http://www.smetj.net/wiki/nscaweb"
+from pkg_resources import get_distribution
 
 class WebServer(threading.Thread):
-    def __init__(self,host,port,pid,ssl="off",ssl_certificate=None,ssl_private_key=None,htmlContent=None,enable_logging="1",blockcallback=None):
+    def __init__(self, host, port, pid, ssl="off", ssl_certificate=None, ssl_private_key=None, htmlContent=None, enable_logging="1", blockcallback=None):
         threading.Thread.__init__(self)
         self.host=host
         self.port=port
@@ -50,25 +53,23 @@ class WebServer(threading.Thread):
         self.enable_logging=enable_logging
         self.loop=blockcallback
         self.daemon=True
-        self.start()        
+        self.start()
+
     def run(self):
         logger.info("WebServer thread started on %s:%s"%(self.host,self.port))
         config={'global': {'server.socket_host': self.host}}
-        cherrypy.config.update( 
-                                { 
-                                'global': 
+        cherrypy.config.update(
+                                {
+                                'global':
                                     {
-#                                   'server.max_request_body_size': int(globals.configfile['settings']['max_dump_size']),
                                     'server.socket_port': int(self.port),
                                     'server.socket_host': self.host,
                                     'tools.sessions.on': False,
-#                                   'log.access_file': None,
-#                                   'log.error_file': None,
                                     'log.screen': False
                                     }
                                 }
                                 )
-                        
+
         #check if we need to run over https or not
         if self.ssl == "on":
             cherrypy.config.update(
@@ -76,10 +77,10 @@ class WebServer(threading.Thread):
                                     'server.ssl_certificate': self.ssl_certificate,
                                     'server.ssl_private_key': self.ssl_private_key
                                     }
-                                  ) 
-        
+                                  )
+
         cp_app = cherrypy.tree.mount(self.htmlContent,'/',config=config)
-        
+
         if self.enable_logging == '1':
             cp_app.log.access_log_format = '%(h)s %(l)s %(u)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
             cp_app.log.access_log = logger
@@ -90,15 +91,19 @@ class WebServer(threading.Thread):
             time.sleep(0.1)
         cherrypy.engine.exit()
         logger.info("WebServer thread stopped.")
+
 class HtmlContent():
     '''Class which provides form to accept incoming NSCAweb data.'''
+
     def __init__(self,queueDefinitions,submitListener,authentication):
         self.queueDefinitions=queueDefinitions
         self.submitListener=submitListener
         self.authentication=authentication
+
     def index(self,*args,**form):
         pass
     index.exposed = False
+
     def queue(self,*args,**form):
         try:
             if form.has_key('username') and form.has_key('password') and form.has_key('input'):
@@ -129,7 +134,7 @@ class HtmlContent():
                                 except Exception:
                                     logger.warn("Queue %s size limit reached. Data discarted."%(args[0]))
                                     raise cherrypy.HTTPError("500 Internal Server Error", "Queue %s is full. Data discarted."%(args[0]))
-                                    
+
                             logger.info("%s items dumped into queue %s for user %s from IP %s."%(counter,args[0],form['username'],cherrypy.request.remote.ip))
                         else:
                             logger.warn("Queue %s does not exist or is disabled. Data is purged for user %s from IP %s."%(args[0],form['username'],cherrypy.request.remote.ip))
@@ -143,10 +148,12 @@ class HtmlContent():
             raise cherrypy.HTTPError("500 Internal Server Error", str(err[1]))
         except Exception as error:
             logger.warn("Malformed data submitted from IP %s. Maybe something wrong with the destination configuration in the config file."%(cherrypy.request.remote.ip))
-    queue.exposed = True        
+    queue.exposed = True
+
     def default(self, *args, **kwargs):
         pass
     default.exposed = True
+
     def construct_package(self,name,queueDefinitions,line):
         package={'destination':{
             'type' : queueDefinitions[name]['type'],
@@ -158,8 +165,10 @@ class HtmlContent():
             'external_command' : line
             }
         return package
+
 class Logger():
     '''Creates a logger class.'''
+
     def __init__(self,logfile='', scrlog=True, syslog='1', loglevel=logging.INFO):
         self.logfile=logfile
         self.scrlog=scrlog
@@ -183,11 +192,13 @@ class Logger():
                 self.sys_handler = SysLogHandler(address='/var/run/syslog')
             else:
                 self.sys_handler = SysLogHandler(address='/dev/log')
-            
+
             self.sys_handler.setFormatter(self.syslog_format)
             self.log.addHandler(self.sys_handler)
+
 class NamedPipe(threading.Thread):
-    def __init__(self,directory,name,submitListener,queueDefinitions=None,blockcallback=None):
+
+    def __init__(self, directory, name, submitListener, queueDefinitions=None, blockcallback=None):
         threading.Thread.__init__(self)
         self.directory=directory
         self.name=name
@@ -197,6 +208,7 @@ class NamedPipe(threading.Thread):
         self.absolutePath=self.directory+'/'+self.name
         self.daemon=True
         self.start()
+
     def run(self):
         try:
             os.unlink ( self.absolutePath )
@@ -235,6 +247,7 @@ class NamedPipe(threading.Thread):
             pass
         logger.info('Named pipe listener with name %s has exit.'%(self.name))
         return
+
     def stop(self):
         try:
             breakBlock = open (self.absolutePath,'r+')
@@ -242,7 +255,8 @@ class NamedPipe(threading.Thread):
             breakBlock.close()
         except:
             pass
-    def construct_package(self,name,queueDefinitions,line):
+
+    def construct_package(self, name, queueDefinitions, line):
         package={'destination':{
             'type' : queueDefinitions[name]['type'],
             'locations' : queueDefinitions[name]['locations'].split(','),
@@ -253,11 +267,12 @@ class NamedPipe(threading.Thread):
             'external_command' : line
             }
         return package
+
 class Server():
     def __init__(self,configfile=None):
         self.configfile=configfile
         try:
-            self.config=ConfigObj(self.configfile)          
+            self.config=ConfigObj(self.configfile)
         except Exception as err:
             sys.stderr.write('There appears to be an error in your configfile:\n')
             sys.stderr.write('\t'+ str(type(err))+" "+str(err) + "\n" )
@@ -275,6 +290,7 @@ class Server():
                 sys.stderr.write('There is already a version of NSCAweb running with pid %s\n'%(pid))
                 sys.exit(1)
     def start(self,debug=False):
+
         #Set logging environment
         global logger
         logger_object = Logger( logfile=self.config['logging'].get('logfile',''),
@@ -283,19 +299,13 @@ class Server():
                     )
         logger = logger_object.log
         logger.info('started')
-        
-        #Extend the search path with library directory.
-        sys.path.append(self.config['application']['libs'])
-        from monitoring.server import ThreadControl
-        from monitoring.server import ConfigFileMonitor
-        from monitoring.authentication import Authenticate
-        from monitoring.communication import SubmitListener
-                
+
+
         #Create pid
         pidfile=open(self.config["application"]["pidfile"],'w')
         pidfile.write(str(os.getpid()))
         pidfile.close()
-            
+
         #Create home for threads
         server=ThreadControl()
 
@@ -303,7 +313,7 @@ class Server():
         server.threads['configfilemonitor'] = ConfigFileMonitor (file=self.configfile,
                                         logger=logger,
                                         blockcallback=server)
-    
+
         #Create Authentication object
         auth = Authenticate (   auth_type='default',
                         database=server.threads['configfilemonitor'].file['authentication'],
@@ -318,8 +328,8 @@ class Server():
         htmlContent = HtmlContent ( queueDefinitions=server.threads['configfilemonitor'].file['destinations'],
                         submitListener=server.threads['submitListener'],
                         authentication = auth)
-        
-        #Start the WebServer thread                             
+
+        #Start the WebServer thread
         server.threads['webserver'] = WebServer (host=server.threads['configfilemonitor'].file['application']['host'],
                             port=server.threads['configfilemonitor'].file['application']['port'],
                             pid=server.threads['configfilemonitor'].file['application']['pidfile'],
@@ -363,6 +373,7 @@ class Server():
                 os.remove(server.threads['configfilemonitor'].file['application']['pidfile'])
             except:
                 pass
+
     def stop(self):
         try:
             pidfile=open(self.config["application"]["pidfile"],'r')
@@ -371,6 +382,7 @@ class Server():
             os.kill(int(pid),signal.SIGINT)
         except Exception as error:
             sys.stderr.write('Could not stop NSCAweb.  Reason: %s\n'%error)
+
     def kill(self):
         try:
             pidfile=open(self.config["application"]["pidfile"],'r')
@@ -379,36 +391,39 @@ class Server():
             os.remove(self.config["application"]["pidfile"])
             os.kill(int(pid),signal.SIGKILL)
         except Exception as error:
-            sys.stderr.write('Could not kill NSCAweb.  Reason: %s\n'%error)         
+            sys.stderr.write('Could not kill NSCAweb.  Reason: %s\n'%error)
+
 class Help():
     def __init__(self):
         pass
     def usage(self):
-        print ('NSCAweb %s Copyright 2009,2010,2011 by Jelle Smet <jelle@smetj.net>' %(version))
+        print ('NSCAweb %s Copyright 2009,2010,2011 by Jelle Smet <jelle@smetj.net>' %( get_distribution('nscaweb').version))
         print ('''Usage: nscaweb command --config configfile
-    
-    Valid commands: 
-    
+
+    Valid commands:
+
         start   Starts the nscaweb daemon in the background.
-                    
+
         stop    Gracefully stops the nscaweb daemon running in the background.
 
         kill    Kills the nscaweb daemon running with the pid defined in your config file.
-            
+
         debug   Starts the nscaweb daemon in the foreground while showing real time log and debug messages.
             The process can be stopped with ctrl+c which will ends NSCAweb gracefully.
-            A seccond ctrl+c will kill NSCAweb.
-                
-    Parameters: 
-        --config    Defines the location of the config file to use.  The parameter is obligatory.  
+            A second ctrl+c will kill NSCAweb.
+
+    Parameters:
+        --config    Defines the location of the config file to use.  The parameter is obligatory.
                 -c can also be used.
-                
+
 NSCAweb is distributed under the Terms of the GNU General Public License Version 3. (http://www.gnu.org/licenses/gpl-3.0.html)
 
 For more information please visit http://www.smetj.net/nscaweb/
 ''')
         return()
-if __name__ == '__main__':
+
+def main():
+
     try:
         #Parse command line options
         parser = OptionParser()
@@ -450,3 +465,6 @@ if __name__ == '__main__':
         sys.stderr.write('\t - The steps to take to reproduce this error.\n')
         sys.stderr.write('\t - This piece of information: '+ str(type(err))+" "+str(err) + "\n" )
         sys.exit(1)
+
+if __name__ == '__main__':
+    main()
