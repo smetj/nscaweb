@@ -325,22 +325,13 @@ line.  In the above diagram, we have server_3 sending check updates to
 server_4.  Server_4 then writes the incoming check results into the Nagios
 external command pipe.
 
-
-
 Following example command does that:
 
     printf "[%lu] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Whatever\n" $(date +%s) | \
     curl -d username="default" -d password="changeme" --data-urlencode input=@- http://localhost:5668/queue
 
-From NSCAweb to NSCAweb
-~~~~~~~~~~~~~~~~~~~~~~~
-
-NSCAweb is a http based daemon which receives data over http post requests. It
-accepts data just like your browser posts and requests data to a webserver. In
-order to interact with NSCAweb you need an http client such as wget, curl,
-libwww, ...
-
-There are 3 form fields available:
+When posting data to the NSCAweb webserver you have to keep 3 fields into
+account:
 
 * username
 * password
@@ -348,62 +339,91 @@ There are 3 form fields available:
 
 The input field should contain 1 or more entries with the same syntax as
 described below. When you use multiple lines as plugin output then use "\\\n"
-to separate those multiple lines. NSCAweb will consider each "\n" as a new
-Nagios external command.
+to separate those multiple lines. NSCAweb considers each *newline* as a new
+command.
 
-**Warning**: Keep in mind that all data you send to NSCAweb needs to be URL
+**Note**: Keep in mind that all data you send to NSCAweb needs to be URL
 encoded. Submit 1 check result to NSCAweb using curl.
 
-**Warning**: Make sure to use a version of curl which supports the '--data-
+**Note**: Make sure to use a version of curl which supports the '--data-
 urlencode' parameter.
 
-Now lets dump the result for 1 service check into it using curl:
+**Note**: Make sure that newlines in multiline output are replaced by litteral
+"\n" prior to sending over to NSCAweb.
 
-    $ now=$(date +%s)
+From NSCAweb to NSCAweb
+~~~~~~~~~~~~~~~~~~~~~~~
 
-    $ data=$(printf "[%lu] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Whatever\n" $now)
+Let's say you have 2 Nagios slave machines (diagram server_1 and server_2)
+which have to forward their results to a central Nagios machine (diagram
+server_3) you will have to configure following items:
 
-    $ curl -d username="default" -d password="changeme" --data-urlencode input="$data" localhost:5668
+Install NCSAweb on all 3 servers
+--------------------------------
 
+Nagios on the saves will submit check results to a local NSCAWeb instance,
+which takes care of transporting the results to the remote NSCAweb instance.
 
-From Nagios
-~~~~~~~~~~~
+Configure OCHP and OHSP on slaves
+---------------------------------
 
-When sending check results from Nagios
+See:
 
-
-Submit 500 check results at once to NSCAweb using curl
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Let's say I have 500 check results I want to dump in 1 go.
-
-Consider following file:
-
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 1;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 2;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 3;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 4;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 5;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 6;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 7;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 8;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 9;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 10;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 11;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 12;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 13;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 14;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 15;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 16;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 17;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 18;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
-    ...snip...
-    [1269803591] PROCESS_SERVICE_CHECK_RESULT;localhost;True 500;2;CRITICAL- Submitted through nscaweb\nA second line of data\nAnd a third one|'perf1'=12;;;; 'perf2'=15;;;;
+- http://nagios.sourceforge.net/docs/3_0/configmain.html#ochp_command
+- http://nagios.sourceforge.net/docs/3_0/configmain.html#ocsp_command
 
 
-Execute:
+**Note**: Nagios treats everything coming after a ";" as comment.
+Unfortunately we need the ";" character to compose the check result data we
+want to forward. Therefor we we have to assign the ";" to a $USER<number>$
+value in the `resource`_ file.  In the below example we havve assigned the ";"
+value to $USER9$
 
-    $ curl -d username="default" -d password="changeme" --data-urlencode input="$(cat /tmp/test_result_file.txt) localhost:5668
+::
+
+    define command {
+            command_name    submit_service_check_result_nscaweb
+            command_line    echo "[$TIMET$] PROCESS_SERVICE_CHECK_RESULT$USER9$$HOSTNAME$$USER9$$SERVICEDESC$$USER9$$SERVICESTATEID$$USER9$$SERVICEOUTPUT$|$SERVICEPERFDATA$" >> /var/tmp/server_4
+    }
+
+    define command {
+            command_name    submit_host_check_result_nscaweb
+            command_line    echo "[$TIMET$] PROCESS_HOST_CHECK_RESULT$USER9$$HOSTNAME$$USER9$$HOSTSTATEID$$USER9$$HOSTOUTPUT$|$HOSTPERFDATA$" >> /var/tmp/server_4
+    }
 
 
-**Just make sure that the \n in between the multiline output is literally send over the NSCAweb.**
+Configure NSCAweb on the slave (sender)
+---------------------------------------
+
+In the above example commands we submit the check results into a named pipe called /var/tmp/server_4.
+Therefor we need the following section in the sending NSCAweb configuration:
+
+ .. code-block:: ini
+
+    [ "destinations" ]
+
+        [[ "server_4" ]]
+            enable      = "0"
+            type        = "nscaweb"
+            locations   = "http://server_4:15668/queue/local"
+            username    = "default"
+            password    = "changeme"
+
+
+
+Configure NSCAweb on the master (receiver)
+------------------------------------------
+
+On the receiving end (server_4) we have NSCAweb writing incoming data into the
+`nagios external command file`_
+
+.. code-block:: ini
+
+        [[ "local" ]]
+            enable      = "1"
+            type        = "local"
+            locations   = "/usr/local/nagios/var/rw/nagios.cmd"
+
+
+.. _resource: http://nagios.sourceforge.net/docs/3_0/configmain.html#resource_file
+.. _nagios external command file: http://nagios.sourceforge.net/docs/3_0/extcommands.html
