@@ -11,21 +11,21 @@ than the classic NSCA daemon.
 
 NSCAweb has following features:
 
- - http(s) as transport makes it more friendly in a firewalled environment.
- - SSL encryption when desired.
- - Supports multiline plugin & performance output.
- - Accepts data coming over http or from local named pipes.
- - Submit data to many types of destinations: named pipes (nagios.cmd), NSCAweb, NRDP or a file.
- - Loadbalance and failover between multiple urls per destination.
- - Duplicate and forward passive check results to an "unlimited" amount of destinations.
- - Submit messages to 1 destination or all destinations depending on the url messages are send to.
- - Simultaneous local and remote delivery.
- - Each destination has an independent, dedicated thread and queue.
- - Buffering of unavailable destinations and resubmitting when destination comes available to prevent data loss.
- - Builtin, multiuser authentication.
- - Trivial to submit check results using http post.
- - Submit check results in bulk or one by one.
- - Use curl as a client from the command line.
+- http(s) as transport makes it more friendly in a firewalled environment.
+- SSL encryption when desired.
+- Supports multiline plugin & performance output.
+- Accepts data coming over http or from local named pipes.
+- Submit data to many types of destinations: named pipes (nagios.cmd), NSCAweb, NRDP or a file.
+- Loadbalance and failover between multiple urls per destination.
+- Duplicate and forward passive check results to an "unlimited" amount of destinations.
+- Submit messages to 1 destination or all destinations depending on the url messages are send to.
+- Simultaneous local and remote delivery.
+- Each destination has an independent, dedicated thread and queue.
+- Buffering of unavailable destinations and resubmitting when destination comes available to prevent data loss.
+- Builtin, multiuser authentication.
+- Trivial to submit check results using http post.
+- Submit check results in bulk or one by one.
+- Use curl as a client from the command line.
 
 
 Support
@@ -194,12 +194,28 @@ which submits incoming data to all defined destinations.
 destinations
 ~~~~~~~~~~~~
 
-The section defines additional NSCAweb destinations to which this instance has
-to forward incoming passive checks. Multiple NSCAweb destinations are
-possible. The amount of destinations is limited to the available resources.
-All passive checks coming into NSCAweb are put into the master queue. Each
-defined destination (pipe & nscaweb definitions) has its own queue to which
-all messages from the master queue are copied.
+A destination is an entry point into NCSAweb and data submitted into it leads
+to the type and location associated with it.
+
+Multiple NSCAweb destinations are can be defined.
+
+Each destination should have a unique name.  The name identifies the
+destination when submitting data.  A destination name is free to choose.
+
+4 different destination types are available:
+
+*   local
+    Writes data to a local named pipe.
+
+*   nscaweb
+    Writes data to another NSCAweb instance.
+
+*   nrdp
+    Writes data to a NRDP receiver
+
+*   file
+    Writes data into a file
+
 
 .. code-block:: ini
 
@@ -213,7 +229,7 @@ all messages from the master queue are copied.
         [[ "master" ]]
             enable      = "0"
             type        = "nscaweb"
-            locations   = "http://prod-ctrl-nagios-001.almere.tomtom.com:15668/queue/local"
+            locations   = "http://server_23.company.local:15668/queue/local"
             username    = "default"
             password    = "changeme"
 
@@ -230,37 +246,42 @@ all messages from the master queue are copied.
             type        = "file"
             locations   = "/tmp/external_commands.log"
 
-Each destination should have a unique name.  The name identifies the
-destination when submitting data.  A destination name is free to choose.  In
-the above example we have defined names: local, master, nagiosWithNrdp and
-debugging.
+Destination types
+#################
 
-*   enable
+local
+*****
 
-    This parameter enables or disables the NSCAweb destination definition. Allowed
-    values are 0(disable) and 1(enable).
+*   locations
 
-*   type
+    A comma delimited list of named pipe locations.
 
-    The type of destination.  There are 4 types:
+nscaweb
+*******
 
-    - nscaweb
-    - nrpd
-    - local
-    - file
-
-*   host
-
-    This parameter defines the address of the remote host running NSCAweb. You can
-    use a hostname or ipaddress. The portnumber can be added using :
+*   locations
+    A comma delimited list of urls
 
 *   username
-
-    The username to authenticate against the remote NSCAweb instance.
+    The username to authenticate to the remote NSCAweb instance
 
 *   password
+    The password to authenticate to the remote NSCAweb instance
 
-    The password to authenticate against the remote NSCAweb instance.
+nrdp
+****
+
+*   locations
+    A list of urls
+
+*   username
+    The username to authenticate to the remote NRDP instance
+
+*   password
+    The password to authenticate to the remote NRDP instance
+
+*   token
+    The token used to authenticate to the remote NRDP instance
 
 authentication
 ~~~~~~~~~~~~~~
@@ -274,30 +295,26 @@ authenticate to NSCAweb in order to dump data.
             default         = "6ac371cc3dc9d38cf33e5c146617df75"
 
 
-This is a simple section which contains a list of username and encrypted
-password pairs. In this case there's only 1 user defined with the login name
-"default" and password "changeme".
+This contains a list of username and corresponding password hashes. In this
+case there's only 1 user defined with the login name "default" and password
+"changeme".
 
-The password is encrypted as an md5sum.  To generate a hash value out of a
-string you can execute the following:
+The password is a md5sum.  To generate a hash value out of a string you can
+execute the following:
 
     $ echo changeme|md5sum
-
-The authentication happens by submitting a login and password form field. You
-must have at least 1 entry here.
 
 **Warning**: Each NSCAweb installation comes with the default username "default"
 and password "changeme". CHANGE IT!.
 
 
-Transport data with NSCAweb
----------------------------
+NSCAweb transport scenario's
+----------------------------
 
 A typical NSCAweb setup looks like this:
 
 .. image:: docs/nscaweb.png
 
-NSCAweb has for each defined destination
 
 From command line to NSCAweb
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
