@@ -253,33 +253,41 @@ local
 *****
 
 *   locations
+
     A comma delimited list of named pipe locations.
 
 nscaweb
 *******
 
 *   locations
+
     A comma delimited list of urls
 
 *   username
+
     The username to authenticate to the remote NSCAweb instance
 
 *   password
+
     The password to authenticate to the remote NSCAweb instance
 
 nrdp
 ****
 
 *   locations
-    A list of urls
+
+    A comma delimited list of urls.
 
 *   username
+
     The username to authenticate to the remote NRDP instance
 
 *   password
+
     The password to authenticate to the remote NRDP instance
 
 *   token
+
     The token used to authenticate to the remote NRDP instance
 
 authentication
