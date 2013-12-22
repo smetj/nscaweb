@@ -253,7 +253,6 @@ local
 *****
 
 *   locations
-
     A comma delimited list of named pipe locations.
 
 nscaweb
