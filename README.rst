@@ -42,14 +42,14 @@ Installation
 You can install NSCAweb from https://pypi.python.org/pypi by executing:
 
 
-    $ easy_install nscaweb
+    | $ easy_install nscaweb
 
 
 Or you can install NSCAweb directly from source when desired:
 
-    $ git clone https://github.com/smetj/nscaweb.git
-    $ cd nscaweb
-    $ sudo python setup.py install
+    | $ git clone https://github.com/smetj/nscaweb.git
+    | $ cd nscaweb
+    | $ sudo python setup.py install
 
 
 Any Python related dependencies should be resolved and installed
