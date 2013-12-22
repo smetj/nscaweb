@@ -196,9 +196,7 @@ destinations
 
 A destination is an entry point into NCSAweb and data submitted into it leads
 to the type and location associated with it.
-
-Multiple NSCAweb destinations are can be defined.
-
+Multiple NSCAweb destinations can be defined.
 Each destination should have a unique name.  The name identifies the
 destination when submitting data.  A destination name is free to choose.
 
