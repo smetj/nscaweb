@@ -27,8 +27,12 @@ from setuptools.command.test import test as TestCommand
 import sys
 
 PROJECT = 'nscaweb'
-VERSION = '0.1.20'
-install_requires=['cherrypy','configobj','python-daemon','pexpect']
+VERSION = '0.1.21'
+install_requires=['pbr == 0.10.7',
+                  'cherrypy == 3.6.0',
+                  'configobj == 5.0.6',
+                  'python-daemon == 1.6',
+                  'pexpect == 3.3']
 
 try:
     long_description = open('README.rst', 'rt').read()
