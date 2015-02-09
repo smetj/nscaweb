@@ -284,9 +284,9 @@ class DeliverNamedPipe(threading.Thread):
                 if S_ISFIFO(mode):
                     cmd=open(self.location,'w')
                     if len(self.data) == 1:
-                        cmd.write(self.data[0]+'\n')
+                        cmd.write(self.data[0].encode('utf-8')+'\n')
                     else:
-                        cmd.write('\n'.join(self.data)+'\n')
+                        cmd.write(('\n'.join(self.data)+'\n').encode('utf-8'))
                     cmd.close()
                     end=time.time()
                     self.logger.info("Data succesfully submitted to %s in %s seconds. %s commands processed. Delivery queue left %s items. Size: %s bytes."%(self.location,round(end-start,3),self.size,self.queue_size,self.queue_bytes))
