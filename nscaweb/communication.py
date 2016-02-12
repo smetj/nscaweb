@@ -282,7 +282,7 @@ class DeliverNamedPipe(threading.Thread):
             if os.path.exists(self.location):
                 mode = os.stat(self.location)[ST_MODE]
                 if S_ISFIFO(mode):
-                    cmd=open(self.location,'w')
+                    cmd=open(self.location,'w', buffering=1)
                     if len(self.data) == 1:
                         cmd.write(self.data[0].encode('utf-8')+'\n')
                     else:
