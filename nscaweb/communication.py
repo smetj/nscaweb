@@ -358,9 +358,8 @@ class DeliverNrdp(threading.Thread):
                 content = conn.read()
                 conn.close()
                 root = ElementTree.XML(content)
-
-            except:
-                self.logger.error('Error submitting data to NRDP %s. Reason: NRDP answer was non xml.'%(self.location))
+            except Exception as err:
+                self.logger.error('Error submitting data to NRDP %s. Reason: %s.' % (self.location, str(err)))
                 self.status=False
                 conn.close()
                 return
