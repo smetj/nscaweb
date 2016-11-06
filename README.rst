@@ -1,4 +1,4 @@
-.. warning::
+.. caution::
 
     NSCAweb has been abandoned.
     It will not be further developed.
