@@ -1,3 +1,10 @@
+.. warning::
+
+    NSCAweb has been abandoned.
+    It will not be further developed.
+    Bug reports and pull requests will not be followed up on.
+
+
 NSCAweb
 =======
 
